@@ -22,6 +22,24 @@ Double-clicking `index.html` directly will render the page, but data
 won't load or save — the app talks to the local server over `fetch()` for
 persistence. See "How it's built" below for why.
 
+## Deploying to Netlify
+
+`node server.js` doesn't run on Netlify (no long-running process, no
+writable disk), so the deploy swaps its two API routes for Netlify
+Functions backed by Netlify Blobs instead — see `netlify.toml` and
+`netlify/functions/`, and CLAUDE.md's "Deployment (Netlify)" section for
+the full reasoning. Static files (`index.html`, `style.css`,
+`attributes.js`, `rules.js`) deploy unchanged.
+
+```
+npm install         # pulls in @netlify/blobs, the one deploy-only dependency
+netlify deploy --prod
+```
+
+(or connect the repo in the Netlify UI — it reads `netlify.toml`
+automatically). No environment variables need setting; Netlify Blobs
+auto-configures for Functions running on Netlify.
+
 ## How it's built
 
 - **HTML / CSS / JavaScript / React** — React and Babel are loaded from a
@@ -46,10 +64,12 @@ index.html          HTML shell + inlined React app (JSX, compiled in-browser)
 style.css            Styling
 attributes.js        Attribute catalog: types, operators, resolver paths, allowed-values sources
 rules.js             Rule catalog: nested condition groups, the 7 amount forms, validation
-server.js            Static file server + /api/attributes and /api/rules persistence
-attributes-data.json Seed/current Attribute catalog data
-rules-data.json      Seed/current Rule catalog data
-package.json         npm start -> node server.js (no dependencies)
+server.js            Static file server + /api/attributes and /api/rules persistence (local dev)
+attributes-data.json Seed/current Attribute catalog data (also the Netlify Blobs seed)
+rules-data.json      Seed/current Rule catalog data (also the Netlify Blobs seed)
+package.json         npm start -> node server.js; @netlify/blobs is deploy-only
+netlify.toml          Netlify build/redirect config (API routes -> Functions, SPA fallback)
+netlify/functions/    Netlify Functions: /api/attributes, /api/rules on Netlify Blobs
 CLAUDE.md            Full project context, domain model, and decision log
 ```
 

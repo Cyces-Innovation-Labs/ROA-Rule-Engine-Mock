@@ -1,6 +1,9 @@
-# Dependencies (project currently has none, but this is standard for a
-# Node project and the server may grow real deps later)
+# Dependencies (local dev / server.js needs none; @netlify/blobs is
+# deploy-only, see package.json + CLAUDE.md's "Deployment (Netlify)")
 node_modules/
+
+# Netlify CLI local state (site link, local Blobs cache, function bundles)
+.netlify/
 
 # Secrets / environment
 .env

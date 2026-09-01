@@ -31,6 +31,56 @@ persists (the page's `fetch()` calls fail with no server to answer them;
 loading falls back to an empty catalog, and saving shows an alert telling
 the user to start the server).
 
+### Deployment (Netlify)
+
+`server.js` is a long-running Node `http` process with `fs.readFileSync`/
+`writeFileSync` against local disk. Netlify doesn't run that shape of
+thing — it's a static CDN plus short-lived serverless Functions with no
+persistent writable filesystem — so a plain "deploy as-is" would serve the
+static files fine but 404 every `/api/attributes` and `/api/rules` call.
+
+Chosen fix: **Netlify Functions + Netlify Blobs**, not a second external
+host. Two Functions (`netlify/functions/attributes.js`, `rules.js`) mirror
+`server.js`'s `RESOURCES` entries one-for-one, sharing a
+`GET`/`PUT`-JSON-array handler (`netlify/functions/_lib/jsonStore.js`)
+that swaps `fs.readFileSync`/`writeFileSync` for Netlify Blobs'
+`store.get`/`store.setJSON` — Blobs is Netlify's own key-value store,
+reachable from Functions with no extra config once deployed on Netlify.
+Unlike `attributes.js`/`rules.js` on the frontend (deliberately duplicated
+per-resource, see above), the two Functions share this helper — it's infra
+plumbing, not domain logic, so there's no independent-evolution reason to
+fork it. Each Function bundles the matching `*-data.json` file as a seed:
+on a store's very first `GET` (empty store, fresh deploy) it's initialized
+from that seed rather than starting empty, so the 21 Attributes / 2 Rules
+already in the repo show up on Netlify too.
+
+`netlify.toml` does the routing: `/api/attributes` and `/api/rules`
+redirect (status 200, i.e. a rewrite) to the two Functions, and
+`/attributes`/`/rules` redirect to `/index.html` — the Netlify-side
+equivalent of `server.js`'s `APP_ROUTES` SPA fallback, same reasoning.
+Static files (`index.html`, `style.css`, `attributes.js`, `rules.js`) need
+no changes and no build step — Netlify serves the repo root directly per
+`netlify.toml`'s `publish = "."`. The frontend's `fetch('/api/attributes')`
+/`fetch('/api/rules')` calls are already relative paths, so they don't
+need to change either.
+
+`@netlify/blobs` is the one dependency this adds — `package.json` now has
+a `dependencies` block for the first time (was zero-deps before), but only
+for the Netlify deploy path; `node server.js` local dev still needs
+nothing installed. Pinned to `^11.0.2` (latest at the time): an earlier
+attempt pinned `^9.1.6` to dodge a Node-version engine warning on the dev
+machine (11.x wants Node ≥22.12, the dev machine had 20.12), but 9.x pulls
+in a transitive high-severity `image-size` DoS advisory (via
+`@netlify/dev-utils`) that's only fixed in 11.x — not exploitable in this
+app (nothing here parses untrusted images) but not worth carrying either,
+so the engine warning (non-fatal locally; Netlify's own build image is a
+separate, newer Node) was the smaller tradeoff.
+
+Not done as part of this: an actual Netlify site was not created/deployed
+from this session — what's here is the repo-side config to make `netlify
+deploy` (or connecting the repo in Netlify's UI) work. See README.md's
+"Deploying to Netlify" for the run commands.
+
 (An earlier, unrelated Node.js/Express/TypeScript backend prototype was
 explored and abandoned before this one; ignore it if referenced anywhere in
 history — it's a different thing from `server.js`.)

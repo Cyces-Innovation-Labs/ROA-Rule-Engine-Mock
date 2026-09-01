@@ -1,8 +1,11 @@
 {
   "name": "roa-rule-engine-web",
   "private": true,
-  "description": "ROA Rule Engine prototype — Attribute catalog + local persistence server. No dependencies, no build step.",
+  "description": "ROA Rule Engine prototype — Attribute catalog + local persistence server. No dependencies, no build step for local dev; Netlify deploy adds one dependency for its Functions (see CLAUDE.md).",
   "scripts": {
     "start": "node server.js"
+  },
+  "dependencies": {
+    "@netlify/blobs": "^11.0.2"
   }
 }

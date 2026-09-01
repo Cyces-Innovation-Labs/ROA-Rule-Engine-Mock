@@ -1,0 +1,38 @@
+# Netlify deploy config for the ROA Rule Engine prototype.
+#
+# This app's local dev path (`node server.js`) is a single Node http
+# server that serves static files AND persists /api/attributes,
+# /api/rules to JSON files on disk. Netlify has no equivalent
+# long-running process or writable disk, so on Netlify:
+#   - static files are served directly by Netlify's CDN from the repo
+#     root (no build step — this app is buildless, see CLAUDE.md)
+#   - the two API routes are handled by Netlify Functions
+#     (netlify/functions/attributes.js, rules.js) backed by Netlify
+#     Blobs instead of fs.readFileSync/writeFileSync
+#   - the SPA path routes (/attributes, /rules) get the same
+#     serve-index.html fallback server.js's APP_ROUTES gives them
+#     locally, so a refresh/typed URL/bookmark on either tab still works
+
+[build]
+  publish = "."
+  functions = "netlify/functions"
+
+[[redirects]]
+  from = "/api/attributes"
+  to = "/.netlify/functions/attributes"
+  status = 200
+
+[[redirects]]
+  from = "/api/rules"
+  to = "/.netlify/functions/rules"
+  status = 200
+
+[[redirects]]
+  from = "/attributes"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/rules"
+  to = "/index.html"
+  status = 200
