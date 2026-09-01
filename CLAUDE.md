@@ -76,10 +76,34 @@ app (nothing here parses untrusted images) but not worth carrying either,
 so the engine warning (non-fatal locally; Netlify's own build image is a
 separate, newer Node) was the smaller tradeoff.
 
-Not done as part of this: an actual Netlify site was not created/deployed
-from this session — what's here is the repo-side config to make `netlify
-deploy` (or connecting the repo in Netlify's UI) work. See README.md's
-"Deploying to Netlify" for the run commands.
+Deployed and working at `https://sunny-muffin-2de3b8.netlify.app`. Two
+real-deploy issues hit along the way, both fixed:
+
+- **Whole site returning 401 with a "Login Redirect" page** (not just
+  `/api/*` — `/`, `/style.css`, everything) — this was Netlify's own
+  **Visitor Access** / site-protection dashboard setting gating the site
+  behind a Netlify-account login wall, unrelated to anything in this repo.
+  Fixed in the dashboard: Site configuration → General → Visitor access →
+  off. Nothing to do on the code side for this one.
+- **`MissingBlobsEnvironmentError` from the Functions** (`getStore(name)`'s
+  zero-config form throwing "The environment has not been configured to
+  use Netlify Blobs... supply siteID, token") — Netlify's automatic
+  site-context injection into `getStore()` doesn't always happen (varies
+  by how/when the site was created; hit this on a real deploy despite
+  `netlify.toml` + Functions being set up correctly). Fixed by having
+  `resolveStore()` in `jsonStore.js` prefer explicit `{ name, siteID,
+  token }` config when two env vars are set, falling back to the
+  zero-config form otherwise (so it still works automatically on a site
+  where auto-injection *does* work). To set them: Netlify dashboard → Site
+  configuration → Environment variables → add `BLOBS_SITE_ID` (Site
+  configuration → General → Site details → Site ID) and `BLOBS_TOKEN` (a
+  Personal Access Token from User settings → Applications → New access
+  token), scoped to Functions, then redeploy/trigger a new deploy so the
+  Functions pick them up. These are deliberately custom names, not
+  `NETLIFY_*`, to avoid colliding with Netlify's own reserved/built-in env
+  vars.
+
+See README.md's "Deploying to Netlify" for the run commands.
 
 (An earlier, unrelated Node.js/Express/TypeScript backend prototype was
 explored and abandoned before this one; ignore it if referenced anywhere in

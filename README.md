@@ -37,8 +37,21 @@ netlify deploy --prod
 ```
 
 (or connect the repo in the Netlify UI — it reads `netlify.toml`
-automatically). No environment variables need setting; Netlify Blobs
-auto-configures for Functions running on Netlify.
+automatically).
+
+Two dashboard settings to check on a fresh site (both are Netlify account/
+site settings, not repo config — see CLAUDE.md's "Deployment (Netlify)"
+for why each was needed):
+
+- **Site configuration → General → Visitor access** — must be off, or
+  every request (including static files) 401s behind a Netlify login wall.
+- **Netlify Blobs env vars** — if Functions throw
+  `MissingBlobsEnvironmentError`, Netlify's automatic site-context
+  injection didn't kick in for this site. Set two environment variables
+  under Site configuration → Environment variables: `BLOBS_SITE_ID` (from
+  Site configuration → General → Site details) and `BLOBS_TOKEN` (a
+  Personal Access Token from User settings → Applications → New access
+  token), then trigger a new deploy.
 
 ## How it's built
 

@@ -7,8 +7,12 @@
 // writeFileSync — which server.js uses against attributes-data.json /
 // rules-data.json on local disk — can't work here. Netlify Blobs is
 // Netlify's own key-value store, reachable from Functions with zero extra
-// config when deployed on Netlify, and is the direct swap-in for "a JSON
-// array persisted somewhere shared."
+// config *when Netlify's automatic site-context injection works* — in
+// practice this doesn't always kick in (hit this exact
+// `MissingBlobsEnvironmentError` on a real deploy), so this falls back to
+// explicit `siteID`/`token` config via env vars — see
+// "Deployment (Netlify)" in CLAUDE.md for how to set BLOBS_SITE_ID /
+// BLOBS_TOKEN.
 //
 // Kept as one shared helper (unlike attributes.js/rules.js on the
 // frontend, which duplicate their versioning helpers on purpose — see
@@ -19,12 +23,22 @@ const { getStore } = require('@netlify/blobs');
 
 const KEY = 'data';
 
+function resolveStore(storeName) {
+  const siteID = process.env.BLOBS_SITE_ID;
+  const token = process.env.BLOBS_TOKEN;
+  // Prefer explicit config when it's set — Netlify's automatic
+  // site-context injection into getStore(name) doesn't always work
+  // (varies by how/when the site was created); explicit siteID/token is
+  // Netlify's own documented fallback for MissingBlobsEnvironmentError.
+  return siteID && token ? getStore({ name: storeName, siteID, token }) : getStore(storeName);
+}
+
 // storeName: Blobs store name, one per resource ('attributes' | 'rules').
 // seed: the bundled prototype JSON array (attributes-data.json /
 //   rules-data.json), used to initialize the store on its very first GET
 //   so a fresh deploy isn't an empty catalog.
 async function handleJsonArrayResource(event, { storeName, seed }) {
-  const store = getStore(storeName);
+  const store = resolveStore(storeName);
 
   if (event.httpMethod === 'GET') {
     let data = await store.get(KEY, { type: 'json' });
