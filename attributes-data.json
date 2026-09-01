@@ -1,0 +1,578 @@
+[
+  {
+    "id": "primary_type",
+    "label": "Primary Type",
+    "type": "enum",
+    "operators": [
+      "eq",
+      "neq",
+      "in",
+      "not_in",
+      "is_empty",
+      "is_not_empty"
+    ],
+    "valueWidget": "select",
+    "valueLabel": "Primary Type",
+    "resolver": {
+      "kind": "path",
+      "path": "transaction.primary_type"
+    },
+    "allowedValuesSource": {
+      "type": "static",
+      "values": [
+        "sale",
+        "lease",
+        "referral_only"
+      ]
+    },
+    "version": 1,
+    "updatedAt": "2026-09-01T02:00:00.000Z"
+  },
+  {
+    "id": "new_construction",
+    "label": "New Construction",
+    "type": "boolean",
+    "operators": [
+      "eq"
+    ],
+    "valueWidget": "toggle",
+    "valueLabel": "New Construction",
+    "resolver": {
+      "kind": "path",
+      "path": "transaction.new_construction"
+    },
+    "allowedValuesSource": null,
+    "version": 1,
+    "updatedAt": "2026-09-01T02:00:00.000Z"
+  },
+  {
+    "id": "personal_deal",
+    "label": "Personal Deal",
+    "type": "boolean",
+    "operators": [
+      "eq"
+    ],
+    "valueWidget": "toggle",
+    "valueLabel": "Personal Deal",
+    "resolver": {
+      "kind": "path",
+      "path": "transaction.personal"
+    },
+    "allowedValuesSource": null,
+    "version": 1,
+    "updatedAt": "2026-09-01T02:00:00.000Z"
+  },
+  {
+    "id": "source",
+    "label": "Source",
+    "type": "enum",
+    "operators": [
+      "eq",
+      "neq",
+      "in",
+      "not_in",
+      "is_empty",
+      "is_not_empty"
+    ],
+    "valueWidget": "select",
+    "valueLabel": "Source",
+    "resolver": {
+      "kind": "path",
+      "path": "transaction.source"
+    },
+    "allowedValuesSource": {
+      "type": "static",
+      "values": [
+        "inbound_referral",
+        "roa_leads",
+        "kairos",
+        "consolidated",
+        "kbb",
+        "none"
+      ]
+    },
+    "version": 1,
+    "updatedAt": "2026-09-01T02:00:00.000Z"
+  },
+  {
+    "id": "deal_subtype",
+    "label": "Deal Subtype",
+    "type": "enum",
+    "operators": [
+      "eq",
+      "neq",
+      "in",
+      "not_in",
+      "is_empty",
+      "is_not_empty"
+    ],
+    "valueWidget": "select",
+    "valueLabel": "Deal Subtype",
+    "resolver": {
+      "kind": "path",
+      "path": "transaction.deal_subtype"
+    },
+    "allowedValuesSource": {
+      "type": "static",
+      "values": [
+        "reo_hud",
+        "short_sale",
+        "bpo",
+        "builder_flat_fee",
+        "none"
+      ]
+    },
+    "version": 1,
+    "updatedAt": "2026-09-01T02:00:00.000Z"
+  },
+  {
+    "id": "cap_position",
+    "label": "Cap Position",
+    "type": "enum",
+    "operators": [
+      "eq",
+      "neq",
+      "in",
+      "not_in",
+      "is_empty",
+      "is_not_empty"
+    ],
+    "valueWidget": "select",
+    "valueLabel": "Cap Position",
+    "resolver": {
+      "kind": "path",
+      "path": "agent.cap_position"
+    },
+    "allowedValuesSource": {
+      "type": "static",
+      "values": [
+        "pre_cap",
+        "capped"
+      ]
+    },
+    "version": 1,
+    "updatedAt": "2026-09-01T02:00:00.000Z"
+  },
+  {
+    "id": "plan",
+    "label": "Plan",
+    "type": "enum",
+    "operators": [
+      "eq",
+      "neq",
+      "in",
+      "not_in",
+      "is_empty",
+      "is_not_empty"
+    ],
+    "valueWidget": "select",
+    "valueLabel": "Plan",
+    "resolver": {
+      "kind": "path",
+      "path": "agent.plan"
+    },
+    "allowedValuesSource": {
+      "type": "static",
+      "values": [
+        "standard",
+        "half_cap",
+        "domestic_team",
+        "lfro",
+        "marketing_collective"
+      ]
+    },
+    "version": 1,
+    "updatedAt": "2026-09-01T02:00:00.000Z"
+  },
+  {
+    "id": "personal_allowance",
+    "label": "Personal Allowance",
+    "type": "enum",
+    "operators": [
+      "eq",
+      "neq",
+      "in",
+      "not_in",
+      "is_empty",
+      "is_not_empty"
+    ],
+    "valueWidget": "select",
+    "valueLabel": "Personal Allowance",
+    "resolver": {
+      "kind": "path",
+      "path": "agent.personal_allowance"
+    },
+    "allowedValuesSource": {
+      "type": "static",
+      "values": [
+        "active",
+        "not_active"
+      ]
+    },
+    "version": 1,
+    "updatedAt": "2026-09-01T02:00:00.000Z"
+  },
+  {
+    "id": "state",
+    "label": "State",
+    "type": "enum",
+    "operators": [
+      "eq",
+      "neq",
+      "in",
+      "not_in",
+      "is_empty",
+      "is_not_empty"
+    ],
+    "valueWidget": "select",
+    "valueLabel": "State",
+    "resolver": {
+      "kind": "path",
+      "path": "transaction.state"
+    },
+    "allowedValuesSource": {
+      "type": "static",
+      "values": [
+        "IL",
+        "WA"
+      ]
+    },
+    "version": 1,
+    "updatedAt": "2026-09-01T02:00:00.000Z"
+  },
+  {
+    "id": "role",
+    "label": "Role",
+    "type": "enum",
+    "operators": [
+      "eq",
+      "neq",
+      "in",
+      "not_in",
+      "is_empty",
+      "is_not_empty"
+    ],
+    "valueWidget": "select",
+    "valueLabel": "Role",
+    "resolver": {
+      "kind": "path",
+      "path": "transaction.role"
+    },
+    "allowedValuesSource": {
+      "type": "static",
+      "values": [
+        "listing",
+        "buying",
+        "other"
+      ]
+    },
+    "version": 1,
+    "updatedAt": "2026-09-01T02:00:00.000Z"
+  },
+  {
+    "id": "gci",
+    "label": "GCI",
+    "type": "number",
+    "operators": [
+      "eq",
+      "neq",
+      "gt",
+      "lt",
+      "gte",
+      "lte",
+      "between",
+      "in",
+      "not_in",
+      "is_empty",
+      "is_not_empty"
+    ],
+    "valueWidget": "number_input",
+    "valueLabel": "GCI ($)",
+    "resolver": {
+      "kind": "path",
+      "path": "transaction.gci"
+    },
+    "allowedValuesSource": null,
+    "version": 1,
+    "updatedAt": "2026-09-01T02:00:00.000Z"
+  },
+  {
+    "id": "program",
+    "label": "Program",
+    "type": "enum",
+    "operators": [
+      "eq",
+      "neq",
+      "in",
+      "not_in",
+      "is_empty",
+      "is_not_empty"
+    ],
+    "valueWidget": "select",
+    "valueLabel": "Program",
+    "resolver": {
+      "kind": "path",
+      "path": "transaction.program"
+    },
+    "allowedValuesSource": {
+      "type": "static",
+      "values": [
+        "roa_leads",
+        "kairos",
+        "consolidated",
+        "kbb",
+        "mentorship"
+      ]
+    },
+    "version": 1,
+    "updatedAt": "2026-09-01T02:00:00.000Z"
+  },
+  {
+    "id": "direction",
+    "label": "Referral Direction",
+    "type": "enum",
+    "operators": [
+      "eq",
+      "neq",
+      "in",
+      "not_in",
+      "is_empty",
+      "is_not_empty"
+    ],
+    "valueWidget": "select",
+    "valueLabel": "Direction",
+    "resolver": {
+      "kind": "path",
+      "path": "transaction.direction"
+    },
+    "allowedValuesSource": {
+      "type": "static",
+      "values": [
+        "inbound",
+        "outbound"
+      ]
+    },
+    "version": 1,
+    "updatedAt": "2026-09-01T02:00:00.000Z"
+  },
+  {
+    "id": "milestone",
+    "label": "Milestone",
+    "type": "enum",
+    "operators": [
+      "eq",
+      "neq",
+      "in",
+      "not_in",
+      "is_empty",
+      "is_not_empty"
+    ],
+    "valueWidget": "select",
+    "valueLabel": "Milestone",
+    "resolver": {
+      "kind": "path",
+      "path": "agent.milestone"
+    },
+    "allowedValuesSource": {
+      "type": "static",
+      "values": [
+        "graduated",
+        "first_sale",
+        "capped",
+        "production",
+        "attraction"
+      ]
+    },
+    "version": 1,
+    "updatedAt": "2026-09-01T02:00:00.000Z"
+  },
+  {
+    "id": "decision",
+    "label": "Recorded Decision",
+    "type": "enum",
+    "operators": [
+      "eq",
+      "neq",
+      "in",
+      "not_in",
+      "is_empty",
+      "is_not_empty"
+    ],
+    "valueWidget": "select",
+    "valueLabel": "Decision",
+    "resolver": {
+      "kind": "path",
+      "path": "transaction.decision"
+    },
+    "allowedValuesSource": {
+      "type": "static",
+      "values": [
+        "late_submission_recorded"
+      ]
+    },
+    "version": 1,
+    "updatedAt": "2026-09-01T02:00:00.000Z"
+  },
+  {
+    "id": "participants_on_side",
+    "label": "Participants on Side",
+    "type": "number",
+    "operators": [
+      "eq",
+      "neq",
+      "gt",
+      "lt",
+      "gte",
+      "lte",
+      "between",
+      "in",
+      "not_in",
+      "is_empty",
+      "is_not_empty"
+    ],
+    "valueWidget": "number_input",
+    "valueLabel": "Participants on Side",
+    "resolver": {
+      "kind": "path",
+      "path": "transaction.participants_on_side"
+    },
+    "allowedValuesSource": null,
+    "version": 1,
+    "updatedAt": "2026-09-01T02:00:00.000Z"
+  },
+  {
+    "id": "primary_license_state",
+    "label": "Primary License State",
+    "type": "enum",
+    "operators": [
+      "eq",
+      "neq",
+      "in",
+      "not_in",
+      "is_empty",
+      "is_not_empty"
+    ],
+    "valueWidget": "select",
+    "valueLabel": "License State",
+    "resolver": {
+      "kind": "path",
+      "path": "agent.primary_license_state"
+    },
+    "allowedValuesSource": {
+      "type": "static",
+      "values": [
+        "WA"
+      ]
+    },
+    "version": 1,
+    "updatedAt": "2026-09-01T02:00:00.000Z"
+  },
+  {
+    "id": "portion",
+    "label": "Portion",
+    "type": "enum",
+    "operators": [
+      "eq",
+      "neq",
+      "in",
+      "not_in",
+      "is_empty",
+      "is_not_empty"
+    ],
+    "valueWidget": "select",
+    "valueLabel": "Portion",
+    "resolver": {
+      "kind": "path",
+      "path": "transaction.portion"
+    },
+    "allowedValuesSource": {
+      "type": "static",
+      "values": [
+        "pass_through"
+      ]
+    },
+    "version": 1,
+    "updatedAt": "2026-09-01T02:00:00.000Z"
+  },
+  {
+    "id": "personal_deals_this_year",
+    "label": "Personal Deals (This Year)",
+    "type": "number",
+    "operators": [
+      "eq",
+      "neq",
+      "gt",
+      "lt",
+      "gte",
+      "lte",
+      "between",
+      "in",
+      "not_in",
+      "is_empty",
+      "is_not_empty"
+    ],
+    "valueWidget": "number_input",
+    "valueLabel": "Count",
+    "resolver": {
+      "kind": "path",
+      "path": "agent.deal_counts.personal_this_year"
+    },
+    "allowedValuesSource": null,
+    "version": 1,
+    "updatedAt": "2026-09-01T02:00:00.000Z"
+  },
+  {
+    "id": "team",
+    "label": "Team",
+    "type": "enum",
+    "operators": [
+      "eq",
+      "neq",
+      "in",
+      "not_in",
+      "is_empty",
+      "is_not_empty"
+    ],
+    "valueWidget": "select",
+    "valueLabel": "Team",
+    "resolver": {
+      "kind": "path",
+      "path": "team.id"
+    },
+    "allowedValuesSource": {
+      "type": "table_ref",
+      "table": "teams",
+      "valueField": "id",
+      "labelField": "name"
+    },
+    "version": 1,
+    "updatedAt": "2026-09-01T02:00:00.000Z"
+  },
+  {
+    "id": "agent",
+    "label": "Agent",
+    "type": "enum",
+    "operators": [
+      "eq",
+      "neq",
+      "in",
+      "not_in",
+      "is_empty",
+      "is_not_empty"
+    ],
+    "valueWidget": "select",
+    "valueLabel": "Agent",
+    "resolver": {
+      "kind": "path",
+      "path": "agent.id"
+    },
+    "allowedValuesSource": {
+      "type": "table_ref",
+      "table": "agents",
+      "valueField": "id",
+      "labelField": "name"
+    },
+    "version": 1,
+    "updatedAt": "2026-09-01T02:00:00.000Z"
+  }
+]

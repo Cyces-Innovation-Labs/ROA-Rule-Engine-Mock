@@ -1,0 +1,72 @@
+[
+  {
+    "id": "risk_fee",
+    "label": "Risk Fee",
+    "conditions": {
+      "kind": "group",
+      "op": "AND",
+      "children": [
+        {
+          "kind": "condition",
+          "attributeId": "source",
+          "operator": "neq",
+          "value": "inbound_referral"
+        },
+        {
+          "kind": "condition",
+          "attributeId": "portion",
+          "operator": "neq",
+          "value": "pass_through"
+        },
+        {
+          "kind": "condition",
+          "attributeId": "plan",
+          "operator": "neq",
+          "value": "lfro"
+        }
+      ]
+    },
+    "amount": {
+      "form": "flat",
+      "cents": 5000
+    },
+    "payee": "roa",
+    "version": 1,
+    "updatedAt": "2026-09-01T03:00:00.000Z"
+  },
+  {
+    "id": "standard_plan",
+    "label": "Standard Plan (Company Dollar)",
+    "conditions": {
+      "kind": "group",
+      "op": "AND",
+      "children": [
+        {
+          "kind": "condition",
+          "attributeId": "plan",
+          "operator": "eq",
+          "value": "standard"
+        }
+      ]
+    },
+    "amount": {
+      "form": "ladder",
+      "tracker": "cap_accumulation",
+      "rateType": "percent",
+      "baseAttributeId": "gci",
+      "rows": [
+        {
+          "upTo": 1400000,
+          "value": 15
+        },
+        {
+          "upTo": null,
+          "value": 0
+        }
+      ]
+    },
+    "payee": "roa",
+    "version": 1,
+    "updatedAt": "2026-09-01T03:00:00.000Z"
+  }
+]

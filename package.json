@@ -1,0 +1,8 @@
+{
+  "name": "roa-rule-engine-web",
+  "private": true,
+  "description": "ROA Rule Engine prototype — Attribute catalog + local persistence server. No dependencies, no build step.",
+  "scripts": {
+    "start": "node server.js"
+  }
+}

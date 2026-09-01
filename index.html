@@ -1,0 +1,1228 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ROA Rule Engine</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- Buildless React setup: CDN React/ReactDOM + in-browser Babel for JSX. No npm install, no server. -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- Plain scripts, loaded natively by the browser — fine to open via file://. -->
+  <script src="attributes.js"></script>
+  <script src="rules.js"></script>
+
+  <!--
+    The app itself is INLINE (not `src="app.js"`) on purpose: when Babel-in-browser
+    transforms a `type="text/babel" src="...">` script, it fetches that file via XHR,
+    and Chrome blocks XHR to file:// URLs (CORS). An external app.js would leave this
+    page blank when opened by double-click instead of through a server. Inlining avoids
+    the fetch entirely, so double-clicking index.html just works — see CLAUDE.md.
+  -->
+  <script type="text/babel">
+    // ROA Rule Engine — Attribute catalog UI (React, buildless via Babel-in-browser).
+
+    const { useState, useEffect } = React;
+
+    const TYPE_LABELS = {
+      number: 'Number',
+      enum: 'Enum',
+      date: 'Date',
+      boolean: 'Boolean',
+    };
+
+    function ChipInput({ values, onChange, placeholder }) {
+      const [draft, setDraft] = useState('');
+
+      function commitDraft() {
+        const v = draft.trim();
+        if (v && !values.includes(v)) {
+          onChange([...values, v]);
+        }
+        setDraft('');
+      }
+
+      function handleKeyDown(e) {
+        if (e.key === 'Enter' || e.key === ',') {
+          e.preventDefault();
+          commitDraft();
+        } else if (e.key === 'Backspace' && !draft && values.length > 0) {
+          onChange(values.slice(0, -1));
+        }
+      }
+
+      function removeAt(idx) {
+        onChange(values.filter((_, i) => i !== idx));
+      }
+
+      return (
+        <div className="chip-input">
+          {values.map((v, i) => (
+            <span className="chip" key={v + i}>
+              {v}
+              <button type="button" className="chip-remove" onClick={() => removeAt(i)} aria-label={`Remove ${v}`}>
+                ×
+              </button>
+            </span>
+          ))}
+          <input
+            type="text"
+            value={draft}
+            placeholder={values.length === 0 ? placeholder : ''}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={handleKeyDown}
+            onBlur={commitDraft}
+          />
+        </div>
+      );
+    }
+
+    function emptyForm() {
+      return {
+        id: '',
+        idTouched: false,
+        label: '',
+        type: 'number',
+        valueLabel: '',
+        resolverRoot: 'transaction',
+        resolverField: '',
+        allowedValuesKind: 'static',
+        staticValues: [],
+        tableRefTable: TABLE_REF_TABLE_KEYS[0],
+      };
+    }
+
+    function formFromAttribute(attr) {
+      const { root, field } = splitResolverPath(attr.resolver && attr.resolver.path);
+      const source = attr.allowedValuesSource;
+      return {
+        id: attr.id,
+        idTouched: true,
+        label: attr.label,
+        type: attr.type,
+        valueLabel: attr.valueLabel,
+        resolverRoot: root,
+        resolverField: field,
+        allowedValuesKind: source && source.type === 'table_ref' ? 'table_ref' : 'static',
+        staticValues: source && source.type === 'static' ? source.values : [],
+        tableRefTable: source && source.type === 'table_ref' ? source.table : TABLE_REF_TABLE_KEYS[0],
+      };
+    }
+
+    function AttributeForm({ initial, editingId, existingAttributes, onSave, onCancel }) {
+      const [form, setForm] = useState(initial || emptyForm());
+      const [errors, setErrors] = useState({});
+
+      function update(patch) {
+        setForm((f) => ({ ...f, ...patch }));
+      }
+
+      function handleLabelChange(label) {
+        update({
+          label,
+          id: form.idTouched ? form.id : slugify(label),
+        });
+      }
+
+      function handleSubmit(e) {
+        e.preventDefault();
+        const foundErrors = validateAttribute(form, existingAttributes, editingId);
+        if (Object.keys(foundErrors).length > 0) {
+          setErrors(foundErrors);
+          return;
+        }
+        const attribute = buildAttribute(form);
+        onSave(attribute);
+      }
+
+      const derivedOperators = operatorsForType(form.type);
+      const derivedWidget = valueWidgetForType(form.type);
+
+      return (
+        <form className="attribute-form" onSubmit={handleSubmit}>
+          <h2>{editingId ? 'Edit Attribute' : 'New Attribute'}</h2>
+
+          <div className="field">
+            <label>Label</label>
+            <input
+              type="text"
+              value={form.label}
+              onChange={(e) => handleLabelChange(e.target.value)}
+              placeholder="e.g. Transaction Amount"
+            />
+            {errors.label && <div className="field-error">{errors.label}</div>}
+          </div>
+
+          <div className="field">
+            <label>Key</label>
+            <input
+              type="text"
+              value={form.id}
+              onChange={(e) => update({ id: e.target.value, idTouched: true })}
+              placeholder="e.g. transaction_amount"
+            />
+            {errors.id && <div className="field-error">{errors.id}</div>}
+          </div>
+
+          <div className="field">
+            <label>Type</label>
+            <select value={form.type} onChange={(e) => update({ type: e.target.value })}>
+              {ATTRIBUTE_TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {TYPE_LABELS[t]}
+                </option>
+              ))}
+            </select>
+            {errors.type && <div className="field-error">{errors.type}</div>}
+          </div>
+
+          <div className="field readonly-derived">
+            <label>Operators (derived from type)</label>
+            <div className="derived-pills">
+              {derivedOperators.map((op) => (
+                <span className="pill" key={op}>
+                  {OPERATOR_LABELS[op] || op}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div className="field readonly-derived">
+            <label>Value widget (derived from type)</label>
+            <div className="derived-pills">
+              <span className="pill">{VALUE_WIDGET_LABELS[derivedWidget]}</span>
+            </div>
+          </div>
+
+          <div className="field">
+            <label>Value label</label>
+            <input
+              type="text"
+              value={form.valueLabel}
+              onChange={(e) => update({ valueLabel: e.target.value })}
+              placeholder={form.label ? `defaults to "${form.label}"` : 'e.g. Count'}
+            />
+          </div>
+
+          <div className="field">
+            <label>Resolver</label>
+            <div className="resolver-row">
+              <select
+                value={form.resolverRoot}
+                onChange={(e) => update({ resolverRoot: e.target.value, resolverField: '' })}
+              >
+                {RESOLVER_ROOTS.map((r) => (
+                  <option key={r} value={r}>{RESOLVER_ROOT_LABELS[r]}</option>
+                ))}
+              </select>
+              <span className="resolver-dot">.</span>
+              <input
+                type="text"
+                list="resolver-field-suggestions"
+                value={form.resolverField}
+                onChange={(e) => update({ resolverField: e.target.value })}
+                placeholder="e.g. plan"
+              />
+              <datalist id="resolver-field-suggestions">
+                {(RESOLVER_FIELD_SUGGESTIONS_BY_ROOT[form.resolverRoot] || []).map((f) => (
+                  <option key={f} value={f} />
+                ))}
+              </datalist>
+            </div>
+            {form.resolverField && (
+              <div className="derived-pills">
+                <span className="pill">Resolves to: {form.resolverRoot}.{form.resolverField}</span>
+              </div>
+            )}
+            {errors.resolverRoot && <div className="field-error">{errors.resolverRoot}</div>}
+            {errors.resolverField && <div className="field-error">{errors.resolverField}</div>}
+          </div>
+
+          {form.type === 'enum' && (
+            <div className="field enum-source">
+              <label>Allowed values</label>
+              <div className="radio-row">
+                <label>
+                  <input
+                    type="radio"
+                    name="allowedValuesKind"
+                    checked={form.allowedValuesKind === 'static'}
+                    onChange={() => update({ allowedValuesKind: 'static' })}
+                  />
+                  Category (fixed list)
+                </label>
+                <label>
+                  <input
+                    type="radio"
+                    name="allowedValuesKind"
+                    checked={form.allowedValuesKind === 'table_ref'}
+                    onChange={() => update({ allowedValuesKind: 'table_ref' })}
+                  />
+                  Reference (live dataset)
+                </label>
+              </div>
+
+              {form.allowedValuesKind === 'static' && (
+                <div>
+                  <ChipInput
+                    values={form.staticValues}
+                    onChange={(values) => update({ staticValues: values })}
+                    placeholder="Type a value and press Enter"
+                  />
+                  {errors.staticValues && <div className="field-error">{errors.staticValues}</div>}
+                </div>
+              )}
+
+              {form.allowedValuesKind === 'table_ref' && (
+                <div>
+                  <select
+                    value={form.tableRefTable}
+                    onChange={(e) => update({ tableRefTable: e.target.value })}
+                  >
+                    {TABLE_REF_TABLE_KEYS.map((key) => (
+                      <option key={key} value={key}>{TABLE_REF_TABLES[key].label}</option>
+                    ))}
+                  </select>
+                  <div className="derived-pills">
+                    <span className="pill">value: {TABLE_REF_TABLES[form.tableRefTable].valueField}</span>
+                    <span className="pill">label: {TABLE_REF_TABLES[form.tableRefTable].labelField}</span>
+                  </div>
+                  {errors.tableRefTable && <div className="field-error">{errors.tableRefTable}</div>}
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="form-actions">
+            <button type="submit" className="btn-primary">
+              {editingId ? 'Save changes' : 'Add Attribute'}
+            </button>
+            <button type="button" className="btn-secondary" onClick={onCancel}>
+              Cancel
+            </button>
+          </div>
+        </form>
+      );
+    }
+
+    function allowedValuesDisplay(attribute) {
+      if (attribute.type !== 'enum' || !attribute.allowedValuesSource) return '—';
+      const source = attribute.allowedValuesSource;
+      return source.type === 'static' ? source.values.join(', ') : `table: ${source.table}`;
+    }
+
+    function AttributeRow({ attribute, onEdit, onDelete, onToggleHistory, historyExpanded }) {
+      return (
+        <tr>
+          <td>
+            {attribute.label} <span className="version-tag">v{attribute.version}</span>
+          </td>
+          <td><code>{attribute.id}</code></td>
+          <td>{TYPE_LABELS[attribute.type]}</td>
+          <td>{attribute.valueLabel}</td>
+          <td><code>{attribute.resolver.path}</code></td>
+          <td>{allowedValuesDisplay(attribute)}</td>
+          <td className="actions-cell">
+            <button className="btn-link" onClick={() => onEdit(attribute)}>Edit</button>
+            <button className="btn-link" onClick={() => onToggleHistory(attribute.id)}>
+              {historyExpanded ? 'Hide history' : 'History'}
+            </button>
+            <button className="btn-link btn-danger" onClick={() => onDelete(attribute)}>Delete</button>
+          </td>
+        </tr>
+      );
+    }
+
+    function HistoryTable({ versions }) {
+      return (
+        <table className="history-table">
+          <thead>
+            <tr>
+              <th>Version</th>
+              <th>Updated</th>
+              <th>Label</th>
+              <th>Type</th>
+              <th>Value label</th>
+              <th>Resolver path</th>
+              <th>Allowed values</th>
+            </tr>
+          </thead>
+          <tbody>
+            {versions.map((v) => (
+              <tr key={v.version}>
+                <td>v{v.version}</td>
+                <td>{new Date(v.updatedAt).toLocaleString()}</td>
+                <td>{v.label}</td>
+                <td>{TYPE_LABELS[v.type]}</td>
+                <td>{v.valueLabel}</td>
+                <td><code>{v.resolver.path}</code></td>
+                <td>{allowedValuesDisplay(v)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      );
+    }
+
+    function AttributesScreen() {
+      // Every version ever saved, flat — see attributes.js's versioning
+      // helpers. The catalog view below only ever shows currentAttributes().
+      const [allVersions, setAllVersions] = useState([]);
+      const [showForm, setShowForm] = useState(false);
+      const [editingAttribute, setEditingAttribute] = useState(null);
+      const [expandedHistoryId, setExpandedHistoryId] = useState(null);
+
+      const attributes = currentAttributes(allVersions);
+
+      useEffect(() => {
+        let cancelled = false;
+        loadAttributes().then((loaded) => {
+          if (!cancelled) setAllVersions(loaded);
+        });
+        return () => { cancelled = true; };
+      }, []);
+
+      async function persist(next) {
+        const previous = allVersions;
+        setAllVersions(next); // optimistic — rolled back below if the save fails
+        try {
+          await saveAttributes(next);
+        } catch (e) {
+          setAllVersions(previous);
+          window.alert(`Failed to save: ${e.message}\n\nIs the local server running? (node server.js)`);
+        }
+      }
+
+      // Editing appends a new version rather than mutating the old one in
+      // place, so past versions stay in the file for the History view.
+      function handleSave(attributeDraft) {
+        const version = editingAttribute
+          ? nextVersionNumber(allVersions, attributeDraft.id)
+          : 1;
+        const versionedAttribute = { ...attributeDraft, version, updatedAt: new Date().toISOString() };
+        persist([...allVersions, versionedAttribute]);
+        setShowForm(false);
+        setEditingAttribute(null);
+      }
+
+      function handleEdit(attribute) {
+        setEditingAttribute(attribute);
+        setShowForm(true);
+      }
+
+      // Delete removes every version of this Attribute — not itself
+      // versioned/soft-deleted for now, only edits are (see CLAUDE.md).
+      function handleDelete(attribute) {
+        if (window.confirm(`Delete Attribute "${attribute.label}"? This removes its full version history too.`)) {
+          persist(allVersions.filter((a) => a.id !== attribute.id));
+          if (expandedHistoryId === attribute.id) setExpandedHistoryId(null);
+        }
+      }
+
+      function handleToggleHistory(id) {
+        setExpandedHistoryId((current) => (current === id ? null : id));
+      }
+
+      function handleCancel() {
+        setShowForm(false);
+        setEditingAttribute(null);
+      }
+
+      return (
+        <div>
+          {!showForm && (
+            <div className="toolbar">
+              <button className="btn-primary" onClick={() => setShowForm(true)}>+ New Attribute</button>
+            </div>
+          )}
+
+          {showForm && (
+            <AttributeForm
+              key={editingAttribute ? editingAttribute.id : 'new'}
+              initial={editingAttribute ? formFromAttribute(editingAttribute) : emptyForm()}
+              editingId={editingAttribute ? editingAttribute.id : null}
+              existingAttributes={attributes}
+              onSave={handleSave}
+              onCancel={handleCancel}
+            />
+          )}
+
+          {attributes.length === 0 ? (
+            <div className="empty-state">No Attributes yet. Click "+ New Attribute" to create one.</div>
+          ) : (
+            <table className="attribute-table">
+              <thead>
+                <tr>
+                  <th>Label</th>
+                  <th>Key</th>
+                  <th>Type</th>
+                  <th>Value label</th>
+                  <th>Resolver path</th>
+                  <th>Allowed values</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {attributes.map((a) => (
+                  <React.Fragment key={a.id}>
+                    <AttributeRow
+                      attribute={a}
+                      onEdit={handleEdit}
+                      onDelete={handleDelete}
+                      onToggleHistory={handleToggleHistory}
+                      historyExpanded={expandedHistoryId === a.id}
+                    />
+                    {expandedHistoryId === a.id && (
+                      <tr className="history-row">
+                        <td colSpan="7">
+                          <HistoryTable versions={versionsForId(allVersions, a.id)} />
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      );
+    }
+
+    // --- Rules screen --------------------------------------------------
+    // Conditions build on the Attribute catalog (AttributesScreen above);
+    // see CLAUDE.md "Domain model — Rules" for the scope-collapse decision
+    // and rules.js for the condition/amount data model this UI edits.
+
+    function ConditionValueInput({ attribute, operator, value, onChange }) {
+      const shape = conditionValueShape(operator);
+      if (shape === 'none') return null;
+
+      if (shape === 'range') {
+        const v = value || {};
+        const inputType = attribute.type === 'number' || attribute.type === 'date' ? attribute.type : 'text';
+        return (
+          <div className="condition-range">
+            <input
+              type={inputType === 'date' ? 'date' : inputType === 'number' ? 'number' : 'text'}
+              value={v.min ?? ''}
+              placeholder="Min"
+              onChange={(e) => onChange({ ...v, min: e.target.value })}
+            />
+            <span>–</span>
+            <input
+              type={inputType === 'date' ? 'date' : inputType === 'number' ? 'number' : 'text'}
+              value={v.max ?? ''}
+              placeholder="Max"
+              onChange={(e) => onChange({ ...v, max: e.target.value })}
+            />
+          </div>
+        );
+      }
+
+      if (shape === 'list') {
+        const values = Array.isArray(value) ? value : [];
+        if (attribute.type === 'enum' && attribute.allowedValuesSource && attribute.allowedValuesSource.type === 'static') {
+          return (
+            <div className="chip-input value-chip-list">
+              {attribute.allowedValuesSource.values.map((v) => (
+                <label key={v} className={'value-chip-toggle' + (values.includes(v) ? ' selected' : '')}>
+                  <input
+                    type="checkbox"
+                    checked={values.includes(v)}
+                    onChange={(e) =>
+                      onChange(e.target.checked ? [...values, v] : values.filter((x) => x !== v))
+                    }
+                  />
+                  {v}
+                </label>
+              ))}
+            </div>
+          );
+        }
+        // Number/date Attributes, or table_ref enums (no fixed value list to pick from) — free text chips.
+        return <ChipInput values={values} onChange={onChange} placeholder="Type a value and press Enter" />;
+      }
+
+      // single
+      if (attribute.type === 'boolean') {
+        return (
+          <select value={value === undefined ? '' : String(value)} onChange={(e) => onChange(e.target.value === 'true')}>
+            <option value="" disabled>Choose...</option>
+            <option value="true">True</option>
+            <option value="false">False</option>
+          </select>
+        );
+      }
+      if (attribute.type === 'enum' && attribute.allowedValuesSource && attribute.allowedValuesSource.type === 'static') {
+        return (
+          <select value={value ?? ''} onChange={(e) => onChange(e.target.value)}>
+            <option value="" disabled>Choose...</option>
+            {attribute.allowedValuesSource.values.map((v) => (
+              <option key={v} value={v}>{v}</option>
+            ))}
+          </select>
+        );
+      }
+      if (attribute.type === 'date') {
+        return <input type="date" value={value ?? ''} onChange={(e) => onChange(e.target.value)} />;
+      }
+      return (
+        <input
+          type={attribute.type === 'number' ? 'number' : 'text'}
+          value={value ?? ''}
+          placeholder={attribute.valueLabel}
+          onChange={(e) =>
+            onChange(attribute.type === 'number' ? (e.target.value === '' ? '' : Number(e.target.value)) : e.target.value)
+          }
+        />
+      );
+    }
+
+    function ConditionRow({ condition, attributes, onChange, onRemove }) {
+      const attribute = attributes.find((a) => a.id === condition.attributeId);
+      const operators = attribute ? operatorsForType(attribute.type) : [];
+
+      function handleAttributeChange(attributeId) {
+        onChange({ ...condition, attributeId, operator: '', value: undefined });
+      }
+      function handleOperatorChange(operator) {
+        onChange({ ...condition, operator, value: undefined });
+      }
+
+      return (
+        <div className="condition-row">
+          <select value={condition.attributeId} onChange={(e) => handleAttributeChange(e.target.value)}>
+            <option value="" disabled>Attribute...</option>
+            {attributes.map((a) => (
+              <option key={a.id} value={a.id}>{a.label}</option>
+            ))}
+          </select>
+          <select value={condition.operator} onChange={(e) => handleOperatorChange(e.target.value)} disabled={!attribute}>
+            <option value="" disabled>Test...</option>
+            {operators.map((op) => (
+              <option key={op} value={op}>{OPERATOR_LABELS[op] || op}</option>
+            ))}
+          </select>
+          {attribute && condition.operator && (
+            <ConditionValueInput
+              attribute={attribute}
+              operator={condition.operator}
+              value={condition.value}
+              onChange={(value) => onChange({ ...condition, value })}
+            />
+          )}
+          <button type="button" className="btn-link btn-danger" onClick={onRemove}>Remove</button>
+        </div>
+      );
+    }
+
+    function ConditionGroupEditor({ group, attributes, onChange, onRemove, depth }) {
+      function updateChild(index, updatedChild) {
+        const children = group.children.slice();
+        children[index] = updatedChild;
+        onChange({ ...group, children });
+      }
+      function removeChild(index) {
+        const children = group.children.slice();
+        children.splice(index, 1);
+        onChange({ ...group, children });
+      }
+
+      return (
+        <div className="condition-group" style={{ marginLeft: depth * 20 }}>
+          <div className="condition-group-header">
+            <div className="radio-row">
+              <label>
+                <input type="radio" checked={group.op === 'AND'} onChange={() => onChange({ ...group, op: 'AND' })} />
+                AND
+              </label>
+              <label>
+                <input type="radio" checked={group.op === 'OR'} onChange={() => onChange({ ...group, op: 'OR' })} />
+                OR
+              </label>
+            </div>
+            {onRemove && (
+              <button type="button" className="btn-link btn-danger" onClick={onRemove}>Remove group</button>
+            )}
+          </div>
+
+          {group.children.length === 0 && (
+            <div className="empty-state condition-empty">Every transaction — no conditions in this group.</div>
+          )}
+
+          {group.children.map((child, i) => (
+            <div key={i} className="condition-child">
+              {child.kind === 'group' ? (
+                <ConditionGroupEditor
+                  group={child}
+                  attributes={attributes}
+                  onChange={(updated) => updateChild(i, updated)}
+                  onRemove={() => removeChild(i)}
+                  depth={depth + 1}
+                />
+              ) : (
+                <ConditionRow
+                  condition={child}
+                  attributes={attributes}
+                  onChange={(updated) => updateChild(i, updated)}
+                  onRemove={() => removeChild(i)}
+                />
+              )}
+            </div>
+          ))}
+
+          <div className="condition-group-actions">
+            <button type="button" className="btn-secondary" onClick={() => onChange({ ...group, children: [...group.children, emptyCondition()] })}>
+              + Condition
+            </button>
+            <button type="button" className="btn-secondary" onClick={() => onChange({ ...group, children: [...group.children, emptyConditionGroup()] })}>
+              + Group
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    function AmountExpressionEditor({ amount, numberAttributes, allAttributes, onChange }) {
+      return (
+        <div className="amount-editor">
+          <select value={amount.form} onChange={(e) => onChange(emptyAmount(e.target.value))}>
+            {AMOUNT_FORMS.map((f) => (
+              <option key={f} value={f}>{AMOUNT_FORM_LABELS[f]}</option>
+            ))}
+          </select>
+
+          {amount.form === 'flat' && (
+            <div className="field">
+              <label>Amount ($)</label>
+              <input
+                type="number"
+                step="0.01"
+                value={centsToDollars(amount.cents)}
+                onChange={(e) => onChange({ ...amount, cents: dollarsToCents(e.target.value) })}
+              />
+            </div>
+          )}
+
+          {amount.form === 'rate' && (
+            <div className="field rate-field">
+              <label>Percentage (%)</label>
+              <input
+                type="number"
+                step="0.01"
+                value={amount.pct}
+                onChange={(e) => onChange({ ...amount, pct: Number(e.target.value) })}
+              />
+              <label>of</label>
+              <select value={amount.baseAttributeId} onChange={(e) => onChange({ ...amount, baseAttributeId: e.target.value })}>
+                <option value="" disabled>Choose Attribute...</option>
+                {numberAttributes.map((a) => (
+                  <option key={a.id} value={a.id}>{a.label}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {(amount.form === 'max' || amount.form === 'min') && (
+            <div className="amount-nested">
+              <div className="amount-branch">
+                <label>{amount.form === 'max' ? 'Greater of — Option A' : 'Lesser of — Option A'}</label>
+                <AmountExpressionEditor
+                  amount={amount.a}
+                  numberAttributes={numberAttributes}
+                  allAttributes={allAttributes}
+                  onChange={(a) => onChange({ ...amount, a })}
+                />
+              </div>
+              <div className="amount-branch">
+                <label>Option B</label>
+                <AmountExpressionEditor
+                  amount={amount.b}
+                  numberAttributes={numberAttributes}
+                  allAttributes={allAttributes}
+                  onChange={(b) => onChange({ ...amount, b })}
+                />
+              </div>
+            </div>
+          )}
+
+          {amount.form === 'ladder' && (
+            <div className="ladder-editor">
+              <div className="field">
+                <label>Tracker</label>
+                <select value={amount.tracker} onChange={(e) => onChange({ ...amount, tracker: e.target.value })}>
+                  {TRACKER_OPTIONS.map((t) => (
+                    <option key={t} value={t}>{TRACKER_LABELS[t]}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="radio-row">
+                <label>
+                  <input type="radio" checked={amount.rateType === 'percent'} onChange={() => onChange({ ...amount, rateType: 'percent' })} />
+                  Percent tiers
+                </label>
+                <label>
+                  <input type="radio" checked={amount.rateType === 'flat'} onChange={() => onChange({ ...amount, rateType: 'flat' })} />
+                  Flat-amount tiers
+                </label>
+              </div>
+              {amount.rateType === 'percent' && (
+                <div className="field">
+                  <label>of</label>
+                  <select value={amount.baseAttributeId} onChange={(e) => onChange({ ...amount, baseAttributeId: e.target.value })}>
+                    <option value="" disabled>Choose Attribute...</option>
+                    {numberAttributes.map((a) => (
+                      <option key={a.id} value={a.id}>{a.label}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {amount.rows.map((row, i) => (
+                <div className="ladder-row" key={i}>
+                  <input
+                    type="number"
+                    step="0.01"
+                    placeholder="Up to ($, blank = no limit)"
+                    value={row.upTo === null ? '' : centsToDollars(row.upTo)}
+                    onChange={(e) => {
+                      const rows = amount.rows.slice();
+                      rows[i] = { ...row, upTo: e.target.value === '' ? null : dollarsToCents(e.target.value) };
+                      onChange({ ...amount, rows });
+                    }}
+                  />
+                  <input
+                    type="number"
+                    step="0.01"
+                    placeholder={amount.rateType === 'percent' ? '%' : '$'}
+                    value={amount.rateType === 'percent' ? row.value : centsToDollars(row.value)}
+                    onChange={(e) => {
+                      const rows = amount.rows.slice();
+                      const v = amount.rateType === 'percent' ? Number(e.target.value) : dollarsToCents(e.target.value);
+                      rows[i] = { ...row, value: v };
+                      onChange({ ...amount, rows });
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="btn-link btn-danger"
+                    onClick={() => {
+                      const rows = amount.rows.slice();
+                      rows.splice(i, 1);
+                      onChange({ ...amount, rows });
+                    }}
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => onChange({ ...amount, rows: [...amount.rows, { upTo: null, value: 0 }] })}
+              >
+                + Row
+              </button>
+            </div>
+          )}
+
+          {amount.form === 'capped_by' && (
+            <div className="capped-by-editor">
+              <div className="field">
+                <label>Tracker (headroom)</label>
+                <select value={amount.tracker} onChange={(e) => onChange({ ...amount, tracker: e.target.value })}>
+                  {TRACKER_OPTIONS.map((t) => (
+                    <option key={t} value={t}>{TRACKER_LABELS[t]}</option>
+                  ))}
+                </select>
+              </div>
+              <label>Amount (before capping)</label>
+              <AmountExpressionEditor
+                amount={amount.amount}
+                numberAttributes={numberAttributes}
+                allAttributes={allAttributes}
+                onChange={(a) => onChange({ ...amount, amount: a })}
+              />
+            </div>
+          )}
+
+          {amount.form === 'from_facts' && (
+            <div className="field">
+              <label>Attribute</label>
+              <select value={amount.attributeId} onChange={(e) => onChange({ ...amount, attributeId: e.target.value })}>
+                <option value="" disabled>Choose Attribute...</option>
+                {allAttributes.map((a) => (
+                  <option key={a.id} value={a.id}>{a.label}</option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    function describeCondition(condition, attributesById) {
+      const attribute = attributesById[condition.attributeId];
+      if (!attribute) return '?';
+      const opLabel = OPERATOR_LABELS[condition.operator] || condition.operator;
+      const shape = conditionValueShape(condition.operator);
+      if (shape === 'none') return `${attribute.label} ${opLabel}`;
+      if (shape === 'range') return `${attribute.label} ${opLabel} ${condition.value?.min} and ${condition.value?.max}`;
+      if (shape === 'list') return `${attribute.label} ${opLabel} [${(condition.value || []).join(', ')}]`;
+      return `${attribute.label} ${opLabel} ${condition.value}`;
+    }
+
+    function describeConditionGroup(group, attributesById) {
+      if (!group.children.length) return 'Every transaction';
+      return group.children
+        .map((c) => (c.kind === 'group' ? `(${describeConditionGroup(c, attributesById)})` : describeCondition(c, attributesById)))
+        .join(` ${group.op} `);
+    }
+
+    function describeAmount(amount, attributesById) {
+      switch (amount.form) {
+        case 'flat':
+          return `$${centsToDollars(amount.cents)}`;
+        case 'rate':
+          return `${amount.pct}% of ${attributesById[amount.baseAttributeId]?.label || '?'}`;
+        case 'max':
+          return `max(${describeAmount(amount.a, attributesById)}, ${describeAmount(amount.b, attributesById)})`;
+        case 'min':
+          return `min(${describeAmount(amount.a, attributesById)}, ${describeAmount(amount.b, attributesById)})`;
+        case 'ladder':
+          return `ladder on ${TRACKER_LABELS[amount.tracker]}${amount.rateType === 'percent' ? ' of ' + (attributesById[amount.baseAttributeId]?.label || '?') : ' (flat tiers)'}`;
+        case 'capped_by':
+          return `${describeAmount(amount.amount, attributesById)}, capped by ${TRACKER_LABELS[amount.tracker]}`;
+        case 'from_facts':
+          return `value of ${attributesById[amount.attributeId]?.label || '?'}`;
+        default:
+          return '?';
+      }
+    }
+
+    function emptyRuleForm() {
+      return {
+        id: '',
+        idTouched: false,
+        label: '',
+        conditions: emptyConditionGroup(),
+        amount: emptyAmount('flat'),
+        payee: 'roa',
+      };
+    }
+
+    function ruleFormFromRule(rule) {
+      return {
+        id: rule.id,
+        idTouched: true,
+        label: rule.label,
+        conditions: rule.conditions,
+        amount: rule.amount,
+        payee: rule.payee,
+      };
+    }
+
+    function RuleForm({ initial, editingId, existingRules, attributes, onSave, onCancel }) {
+      const [form, setForm] = useState(initial || emptyRuleForm());
+      const [errors, setErrors] = useState({});
+
+      function update(patch) {
+        setForm((f) => ({ ...f, ...patch }));
+      }
+      function handleLabelChange(label) {
+        update({ label, id: form.idTouched ? form.id : slugify(label) });
+      }
+
+      const attributesById = Object.fromEntries(attributes.map((a) => [a.id, a]));
+      const numberAttributes = attributes.filter((a) => a.type === 'number');
+
+      function handleSubmit(e) {
+        e.preventDefault();
+        const foundErrors = validateRule(form, existingRules, editingId, attributesById);
+        if (Object.keys(foundErrors).length > 0) {
+          setErrors(foundErrors);
+          return;
+        }
+        onSave(buildRule(form));
+      }
+
+      return (
+        <form className="attribute-form" onSubmit={handleSubmit}>
+          <h2>{editingId ? 'Edit Rule' : 'New Rule'}</h2>
+
+          <div className="field">
+            <label>Label</label>
+            <input type="text" value={form.label} onChange={(e) => handleLabelChange(e.target.value)} placeholder="e.g. Risk Fee" />
+            {errors.label && <div className="field-error">{errors.label}</div>}
+          </div>
+
+          <div className="field">
+            <label>Key</label>
+            <input type="text" value={form.id} onChange={(e) => update({ id: e.target.value, idTouched: true })} placeholder="e.g. risk_fee" />
+            {errors.id && <div className="field-error">{errors.id}</div>}
+          </div>
+
+          <div className="field">
+            <label>Conditions</label>
+            <ConditionGroupEditor group={form.conditions} attributes={attributes} onChange={(conditions) => update({ conditions })} depth={0} />
+            {errors.conditions && <div className="field-error">{errors.conditions}</div>}
+          </div>
+
+          <div className="field">
+            <label>Amount</label>
+            <AmountExpressionEditor
+              amount={form.amount}
+              numberAttributes={numberAttributes}
+              allAttributes={attributes}
+              onChange={(amount) => update({ amount })}
+            />
+            {errors.amount && <div className="field-error">{errors.amount}</div>}
+          </div>
+
+          <div className="field">
+            <label>Payee</label>
+            <select value={form.payee} onChange={(e) => update({ payee: e.target.value })}>
+              {PAYEE_OPTIONS.map((p) => (
+                <option key={p} value={p}>{PAYEE_LABELS[p]}</option>
+              ))}
+            </select>
+            {errors.payee && <div className="field-error">{errors.payee}</div>}
+          </div>
+
+          <div className="form-actions">
+            <button type="submit" className="btn-primary">{editingId ? 'Save changes' : 'Add Rule'}</button>
+            <button type="button" className="btn-secondary" onClick={onCancel}>Cancel</button>
+          </div>
+        </form>
+      );
+    }
+
+    function RuleRow({ rule, attributesById, onEdit, onDelete, onToggleHistory, historyExpanded }) {
+      return (
+        <tr>
+          <td>{rule.label} <span className="version-tag">v{rule.version}</span></td>
+          <td><code>{rule.id}</code></td>
+          <td>{describeConditionGroup(rule.conditions, attributesById)}</td>
+          <td>{describeAmount(rule.amount, attributesById)}</td>
+          <td>{PAYEE_LABELS[rule.payee]}</td>
+          <td className="actions-cell">
+            <button className="btn-link" onClick={() => onEdit(rule)}>Edit</button>
+            <button className="btn-link" onClick={() => onToggleHistory(rule.id)}>
+              {historyExpanded ? 'Hide history' : 'History'}
+            </button>
+            <button className="btn-link btn-danger" onClick={() => onDelete(rule)}>Delete</button>
+          </td>
+        </tr>
+      );
+    }
+
+    function RuleHistoryTable({ versions, attributesById }) {
+      return (
+        <table className="history-table">
+          <thead>
+            <tr>
+              <th>Version</th>
+              <th>Updated</th>
+              <th>Label</th>
+              <th>Conditions</th>
+              <th>Amount</th>
+              <th>Payee</th>
+            </tr>
+          </thead>
+          <tbody>
+            {versions.map((v) => (
+              <tr key={v.version}>
+                <td>v{v.version}</td>
+                <td>{new Date(v.updatedAt).toLocaleString()}</td>
+                <td>{v.label}</td>
+                <td>{describeConditionGroup(v.conditions, attributesById)}</td>
+                <td>{describeAmount(v.amount, attributesById)}</td>
+                <td>{PAYEE_LABELS[v.payee]}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      );
+    }
+
+    function RulesScreen() {
+      const [allVersions, setAllVersions] = useState([]);
+      const [attributes, setAttributes] = useState([]);
+      const [showForm, setShowForm] = useState(false);
+      const [editingRule, setEditingRule] = useState(null);
+      const [expandedHistoryId, setExpandedHistoryId] = useState(null);
+
+      const rules = currentRules(allVersions);
+      const attributesById = Object.fromEntries(attributes.map((a) => [a.id, a]));
+
+      useEffect(() => {
+        let cancelled = false;
+        Promise.all([loadRules(), loadAttributes()]).then(([loadedRules, loadedAttributeVersions]) => {
+          if (!cancelled) {
+            setAllVersions(loadedRules);
+            setAttributes(currentAttributes(loadedAttributeVersions));
+          }
+        });
+        return () => { cancelled = true; };
+      }, []);
+
+      async function persist(next) {
+        const previous = allVersions;
+        setAllVersions(next);
+        try {
+          await saveRules(next);
+        } catch (e) {
+          setAllVersions(previous);
+          window.alert(`Failed to save: ${e.message}\n\nIs the local server running? (node server.js)`);
+        }
+      }
+
+      function handleSave(ruleDraft) {
+        const version = editingRule ? nextRuleVersionNumber(allVersions, ruleDraft.id) : 1;
+        const versionedRule = { ...ruleDraft, version, updatedAt: new Date().toISOString() };
+        persist([...allVersions, versionedRule]);
+        setShowForm(false);
+        setEditingRule(null);
+      }
+
+      function handleEdit(rule) {
+        setEditingRule(rule);
+        setShowForm(true);
+      }
+
+      function handleDelete(rule) {
+        if (window.confirm(`Delete Rule "${rule.label}"? This removes its full version history too.`)) {
+          persist(allVersions.filter((r) => r.id !== rule.id));
+          if (expandedHistoryId === rule.id) setExpandedHistoryId(null);
+        }
+      }
+
+      function handleToggleHistory(id) {
+        setExpandedHistoryId((current) => (current === id ? null : id));
+      }
+
+      function handleCancel() {
+        setShowForm(false);
+        setEditingRule(null);
+      }
+
+      return (
+        <div>
+          {!showForm && (
+            <div className="toolbar">
+              <button className="btn-primary" onClick={() => setShowForm(true)} disabled={attributes.length === 0}>
+                + New Rule
+              </button>
+              {attributes.length === 0 && <span className="hint-text">Create at least one Attribute first.</span>}
+            </div>
+          )}
+
+          {showForm && (
+            <RuleForm
+              key={editingRule ? editingRule.id : 'new'}
+              initial={editingRule ? ruleFormFromRule(editingRule) : emptyRuleForm()}
+              editingId={editingRule ? editingRule.id : null}
+              existingRules={rules}
+              attributes={attributes}
+              onSave={handleSave}
+              onCancel={handleCancel}
+            />
+          )}
+
+          {rules.length === 0 ? (
+            <div className="empty-state">No Rules yet. Click "+ New Rule" to create one.</div>
+          ) : (
+            <table className="attribute-table">
+              <thead>
+                <tr>
+                  <th>Label</th>
+                  <th>Key</th>
+                  <th>Conditions</th>
+                  <th>Amount</th>
+                  <th>Payee</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rules.map((r) => (
+                  <React.Fragment key={r.id}>
+                    <RuleRow
+                      rule={r}
+                      attributesById={attributesById}
+                      onEdit={handleEdit}
+                      onDelete={handleDelete}
+                      onToggleHistory={handleToggleHistory}
+                      historyExpanded={expandedHistoryId === r.id}
+                    />
+                    {expandedHistoryId === r.id && (
+                      <tr className="history-row">
+                        <td colSpan="6">
+                          <RuleHistoryTable versions={ruleVersionsForId(allVersions, r.id)} attributesById={attributesById} />
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      );
+    }
+
+    // Path-based routing (no router library — see server.js's APP_ROUTES
+    // for the matching server-side fallback that makes a refresh/typed-URL
+    // on either path work instead of 404ing or landing on Attributes).
+    const ROUTE_FOR_TAB = { attributes: '/attributes', rules: '/rules' };
+    const TAB_FOR_ROUTE = { '/': 'attributes', '/attributes': 'attributes', '/rules': 'rules' };
+
+    function tabFromLocation() {
+      return TAB_FOR_ROUTE[window.location.pathname] || 'attributes';
+    }
+
+    function App() {
+      const [tab, setTab] = useState(tabFromLocation);
+
+      useEffect(() => {
+        function handlePopState() {
+          setTab(tabFromLocation());
+        }
+        window.addEventListener('popstate', handlePopState);
+        return () => window.removeEventListener('popstate', handlePopState);
+      }, []);
+
+      function navigateToTab(nextTab) {
+        if (nextTab === tab) return;
+        window.history.pushState({}, '', ROUTE_FOR_TAB[nextTab]);
+        setTab(nextTab);
+      }
+
+      return (
+        <div className="app">
+          <header className="app-header">
+            <h1>ROA Rule Engine</h1>
+            <p className="subtitle">Attributes feed Rules — conditions and amounts are built on top of the Attribute catalog.</p>
+          </header>
+          <div className="tab-nav">
+            <button className={'tab-btn' + (tab === 'attributes' ? ' active' : '')} onClick={() => navigateToTab('attributes')}>
+              Attributes
+            </button>
+            <button className={'tab-btn' + (tab === 'rules' ? ' active' : '')} onClick={() => navigateToTab('rules')}>
+              Rules
+            </button>
+          </div>
+          {tab === 'attributes' ? <AttributesScreen /> : <RulesScreen />}
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
