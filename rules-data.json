@@ -2,6 +2,7 @@
   {
     "id": "risk_fee",
     "label": "Risk Fee",
+    "waivable": false,
     "conditions": {
       "kind": "group",
       "op": "AND",
@@ -26,17 +27,27 @@
         }
       ]
     },
-    "amount": {
-      "form": "flat",
-      "cents": 5000
-    },
+    "branches": [
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": []
+        },
+        "amount": {
+          "form": "flat",
+          "cents": 5000
+        }
+      }
+    ],
     "payee": "roa",
     "version": 1,
-    "updatedAt": "2026-09-01T03:00:00.000Z"
+    "updatedAt": "2026-09-03T00:00:00.000Z"
   },
   {
     "id": "standard_plan",
-    "label": "Standard Plan (Company Dollar)",
+    "label": "Standard Plan (Company Dollar + Floor)",
+    "waivable": false,
     "conditions": {
       "kind": "group",
       "op": "AND",
@@ -49,24 +60,1181 @@
         }
       ]
     },
-    "amount": {
-      "form": "ladder",
-      "tracker": "cap_accumulation",
-      "rateType": "percent",
-      "baseAttributeId": "gci",
-      "rows": [
-        {
-          "upTo": 1400000,
-          "value": 15
+    "branches": [
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": [
+            {
+              "kind": "condition",
+              "attributeId": "primary_type",
+              "operator": "eq",
+              "value": "lease"
+            },
+            {
+              "kind": "condition",
+              "attributeId": "source",
+              "operator": "neq",
+              "value": "inbound_referral"
+            }
+          ]
         },
+        "amount": {
+          "form": "max",
+          "a": {
+            "form": "ladder",
+            "tracker": "cap_accumulation",
+            "rateType": "percent",
+            "baseAttributeId": "gci",
+            "rows": [
+              {
+                "upTo": 1400000,
+                "value": 15
+              },
+              {
+                "upTo": null,
+                "value": 0
+              }
+            ]
+          },
+          "b": {
+            "form": "flat",
+            "cents": 12500
+          }
+        }
+      },
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": [
+            {
+              "kind": "condition",
+              "attributeId": "primary_type",
+              "operator": "eq",
+              "value": "sale"
+            },
+            {
+              "kind": "condition",
+              "attributeId": "source",
+              "operator": "neq",
+              "value": "inbound_referral"
+            },
+            {
+              "kind": "condition",
+              "attributeId": "deal_subtype",
+              "operator": "not_in",
+              "value": [
+                "reo_hud",
+                "short_sale",
+                "bpo"
+              ]
+            },
+            {
+              "kind": "condition",
+              "attributeId": "personal_allowance",
+              "operator": "eq",
+              "value": "not_active"
+            },
+            {
+              "kind": "condition",
+              "attributeId": "cap_position",
+              "operator": "eq",
+              "value": "pre_cap"
+            }
+          ]
+        },
+        "amount": {
+          "form": "max",
+          "a": {
+            "form": "ladder",
+            "tracker": "cap_accumulation",
+            "rateType": "percent",
+            "baseAttributeId": "gci",
+            "rows": [
+              {
+                "upTo": 1400000,
+                "value": 15
+              },
+              {
+                "upTo": null,
+                "value": 0
+              }
+            ]
+          },
+          "b": {
+            "form": "flat",
+            "cents": 50000
+          }
+        }
+      },
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": []
+        },
+        "amount": {
+          "form": "ladder",
+          "tracker": "cap_accumulation",
+          "rateType": "percent",
+          "baseAttributeId": "gci",
+          "rows": [
+            {
+              "upTo": 1400000,
+              "value": 15
+            },
+            {
+              "upTo": null,
+              "value": 0
+            }
+          ]
+        }
+      }
+    ],
+    "payee": "roa",
+    "version": 2,
+    "updatedAt": "2026-09-03T00:00:00.000Z"
+  },
+  {
+    "id": "team_account_cut",
+    "label": "Team Account Cut (Standard Team)",
+    "waivable": false,
+    "conditions": {
+      "kind": "group",
+      "op": "AND",
+      "children": [
         {
-          "upTo": null,
-          "value": 0
+          "kind": "condition",
+          "attributeId": "plan",
+          "operator": "eq",
+          "value": "standard"
         }
       ]
     },
+    "branches": [
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": []
+        },
+        "amount": {
+          "form": "rate",
+          "pct": 10,
+          "baseAttributeId": "gci"
+        }
+      }
+    ],
+    "payee": "team",
+    "version": 1,
+    "updatedAt": "2026-09-03T00:00:00.000Z"
+  },
+  {
+    "id": "team_account_cut",
+    "label": "Team Account Cut (Standard Team)",
+    "waivable": false,
+    "conditions": {
+      "kind": "group",
+      "op": "AND",
+      "children": [
+        {
+          "kind": "condition",
+          "attributeId": "team",
+          "operator": "eq",
+          "value": "Standard"
+        }
+      ]
+    },
+    "branches": [
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": []
+        },
+        "amount": {
+          "form": "rate",
+          "pct": 10,
+          "baseAttributeId": "gci"
+        }
+      }
+    ],
+    "payee": "team",
+    "version": 2,
+    "updatedAt": "2026-09-03T15:36:37.469Z"
+  },
+  {
+    "id": "inbound_referral_fee",
+    "label": "Inbound Referral Fee",
+    "waivable": false,
+    "conditions": {
+      "kind": "group",
+      "op": "AND",
+      "children": [
+        {
+          "kind": "condition",
+          "attributeId": "source",
+          "operator": "eq",
+          "value": "inbound_referral"
+        }
+      ]
+    },
+    "branches": [
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": []
+        },
+        "amount": {
+          "form": "from_facts",
+          "attributeId": "referral_agreement"
+        }
+      }
+    ],
+    "payee": "external_brokerage",
+    "version": 1,
+    "updatedAt": "2026-09-03T16:00:00.000Z"
+  },
+  {
+    "id": "outbound_referral_passthrough",
+    "label": "Outbound Referral Pass-Through",
+    "waivable": false,
+    "conditions": {
+      "kind": "group",
+      "op": "AND",
+      "children": [
+        {
+          "kind": "condition",
+          "attributeId": "primary_type",
+          "operator": "eq",
+          "value": "referral_only"
+        },
+        {
+          "kind": "condition",
+          "attributeId": "direction",
+          "operator": "eq",
+          "value": "outbound"
+        }
+      ]
+    },
+    "branches": [
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": []
+        },
+        "amount": {
+          "form": "from_facts",
+          "attributeId": "referral_agreement"
+        }
+      }
+    ],
+    "payee": "referring_agent",
+    "version": 1,
+    "updatedAt": "2026-09-03T16:00:00.000Z"
+  },
+  {
+    "id": "personal_deal_fee",
+    "label": "Personal-Deal Fee",
+    "waivable": false,
+    "conditions": {
+      "kind": "group",
+      "op": "AND",
+      "children": [
+        {
+          "kind": "condition",
+          "attributeId": "personal_deal",
+          "operator": "eq",
+          "value": true
+        },
+        {
+          "kind": "condition",
+          "attributeId": "personal_deals_this_year",
+          "operator": "lt",
+          "value": 2
+        }
+      ]
+    },
+    "branches": [
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": []
+        },
+        "amount": {
+          "form": "flat",
+          "cents": 85000
+        }
+      }
+    ],
     "payee": "roa",
     "version": 1,
-    "updatedAt": "2026-09-01T03:00:00.000Z"
+    "updatedAt": "2026-09-03T16:00:00.000Z"
+  },
+  {
+    "id": "technology_fee",
+    "label": "Technology Fee",
+    "waivable": true,
+    "conditions": {
+      "kind": "group",
+      "op": "AND",
+      "children": []
+    },
+    "branches": [
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": [
+            {
+              "kind": "condition",
+              "attributeId": "gci",
+              "operator": "lt",
+              "value": 100000
+            }
+          ]
+        },
+        "amount": {
+          "form": "capped_by",
+          "tracker": "tech_fee_bucket",
+          "amount": {
+            "form": "flat",
+            "cents": 12500
+          }
+        }
+      },
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": []
+        },
+        "amount": {
+          "form": "capped_by",
+          "tracker": "tech_fee_bucket",
+          "amount": {
+            "form": "flat",
+            "cents": 25000
+          }
+        }
+      }
+    ],
+    "payee": "roa",
+    "version": 1,
+    "updatedAt": "2026-09-03T16:00:00.000Z"
+  },
+  {
+    "id": "delinquency_fee",
+    "label": "Delinquency Fee",
+    "waivable": false,
+    "conditions": {
+      "kind": "group",
+      "op": "AND",
+      "children": [
+        {
+          "kind": "condition",
+          "attributeId": "decision",
+          "operator": "eq",
+          "value": "late_submission_recorded"
+        }
+      ]
+    },
+    "branches": [
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": []
+        },
+        "amount": {
+          "form": "flat",
+          "cents": 15000
+        }
+      }
+    ],
+    "payee": "roa",
+    "version": 1,
+    "updatedAt": "2026-09-03T16:00:00.000Z"
+  },
+  {
+    "id": "capped_status_fee",
+    "label": "Capped-Status Fee",
+    "waivable": false,
+    "conditions": {
+      "kind": "group",
+      "op": "AND",
+      "children": [
+        {
+          "kind": "condition",
+          "attributeId": "cap_position",
+          "operator": "eq",
+          "value": "capped"
+        }
+      ]
+    },
+    "branches": [
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": [
+            {
+              "kind": "condition",
+              "attributeId": "source",
+              "operator": "eq",
+              "value": "inbound_referral"
+            }
+          ]
+        },
+        "amount": {
+          "form": "min",
+          "a": {
+            "form": "rate",
+            "pct": 15,
+            "baseAttributeId": "gci"
+          },
+          "b": {
+            "form": "ladder",
+            "tracker": "post_cap_bucket",
+            "rateType": "flat",
+            "baseAttributeId": "",
+            "rows": [
+              {
+                "upTo": 500000,
+                "value": 25000
+              },
+              {
+                "upTo": 1000000,
+                "value": 12500
+              },
+              {
+                "upTo": null,
+                "value": 7500
+              }
+            ]
+          }
+        }
+      },
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": [
+            {
+              "kind": "condition",
+              "attributeId": "deal_subtype",
+              "operator": "eq",
+              "value": "builder_flat_fee"
+            }
+          ]
+        },
+        "amount": {
+          "form": "min",
+          "a": {
+            "form": "rate",
+            "pct": 15,
+            "baseAttributeId": "gci"
+          },
+          "b": {
+            "form": "ladder",
+            "tracker": "post_cap_bucket",
+            "rateType": "flat",
+            "baseAttributeId": "",
+            "rows": [
+              {
+                "upTo": 500000,
+                "value": 25000
+              },
+              {
+                "upTo": 1000000,
+                "value": 12500
+              },
+              {
+                "upTo": null,
+                "value": 7500
+              }
+            ]
+          }
+        }
+      },
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": [
+            {
+              "kind": "condition",
+              "attributeId": "primary_type",
+              "operator": "eq",
+              "value": "lease"
+            }
+          ]
+        },
+        "amount": {
+          "form": "min",
+          "a": {
+            "form": "rate",
+            "pct": 15,
+            "baseAttributeId": "gci"
+          },
+          "b": {
+            "form": "ladder",
+            "tracker": "post_cap_bucket",
+            "rateType": "flat",
+            "baseAttributeId": "",
+            "rows": [
+              {
+                "upTo": 500000,
+                "value": 25000
+              },
+              {
+                "upTo": 1000000,
+                "value": 12500
+              },
+              {
+                "upTo": null,
+                "value": 7500
+              }
+            ]
+          }
+        }
+      },
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": []
+        },
+        "amount": {
+          "form": "ladder",
+          "tracker": "post_cap_bucket",
+          "rateType": "flat",
+          "baseAttributeId": "",
+          "rows": [
+            {
+              "upTo": 500000,
+              "value": 25000
+            },
+            {
+              "upTo": 1000000,
+              "value": 12500
+            },
+            {
+              "upTo": null,
+              "value": 7500
+            }
+          ]
+        }
+      }
+    ],
+    "payee": "roa",
+    "version": 1,
+    "updatedAt": "2026-09-03T16:00:00.000Z"
+  },
+  {
+    "id": "roa_leads_program",
+    "label": "ROA Leads Program",
+    "waivable": false,
+    "conditions": {
+      "kind": "group",
+      "op": "AND",
+      "children": [
+        {
+          "kind": "condition",
+          "attributeId": "source",
+          "operator": "eq",
+          "value": "roa_leads"
+        }
+      ]
+    },
+    "branches": [
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": []
+        },
+        "amount": {
+          "form": "rate",
+          "pct": 30,
+          "baseAttributeId": "gci"
+        }
+      }
+    ],
+    "payee": "roa",
+    "version": 1,
+    "updatedAt": "2026-09-03T16:00:00.000Z"
+  },
+  {
+    "id": "kairos_program",
+    "label": "Kairos Program",
+    "waivable": false,
+    "conditions": {
+      "kind": "group",
+      "op": "AND",
+      "children": [
+        {
+          "kind": "condition",
+          "attributeId": "program",
+          "operator": "eq",
+          "value": "kairos"
+        }
+      ]
+    },
+    "branches": [
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": []
+        },
+        "amount": {
+          "form": "rate",
+          "pct": 18,
+          "baseAttributeId": "gci"
+        }
+      }
+    ],
+    "payee": "roa",
+    "version": 1,
+    "updatedAt": "2026-09-03T16:00:00.000Z"
+  },
+  {
+    "id": "il_admin_fee",
+    "label": "IL Admin Fee",
+    "waivable": false,
+    "conditions": {
+      "kind": "group",
+      "op": "AND",
+      "children": [
+        {
+          "kind": "condition",
+          "attributeId": "state",
+          "operator": "eq",
+          "value": "IL"
+        },
+        {
+          "kind": "condition",
+          "attributeId": "role",
+          "operator": "eq",
+          "value": "listing"
+        }
+      ]
+    },
+    "branches": [
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": []
+        },
+        "amount": {
+          "form": "flat",
+          "cents": 49500
+        }
+      }
+    ],
+    "payee": "statutory",
+    "version": 1,
+    "updatedAt": "2026-09-03T16:00:00.000Z"
+  },
+  {
+    "id": "wa_workers_comp",
+    "label": "WA Workers' Compensation (rate TBD — set annually from the WA L&I Rate Notice)",
+    "waivable": false,
+    "conditions": {
+      "kind": "group",
+      "op": "AND",
+      "children": [
+        {
+          "kind": "condition",
+          "attributeId": "primary_license_state",
+          "operator": "eq",
+          "value": "WA"
+        }
+      ]
+    },
+    "branches": [
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": []
+        },
+        "amount": {
+          "form": "flat",
+          "cents": 0
+        }
+      }
+    ],
+    "payee": "statutory",
+    "version": 1,
+    "updatedAt": "2026-09-03T16:00:00.000Z"
+  },
+  {
+    "id": "mentor_fee",
+    "label": "Mentor Fee",
+    "waivable": false,
+    "conditions": {
+      "kind": "group",
+      "op": "AND",
+      "children": [
+        {
+          "kind": "condition",
+          "attributeId": "plan",
+          "operator": "eq",
+          "value": "standard"
+        },
+        {
+          "kind": "condition",
+          "attributeId": "milestone",
+          "operator": "neq",
+          "value": "graduated"
+        }
+      ]
+    },
+    "branches": [
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": []
+        },
+        "amount": {
+          "form": "rate",
+          "pct": 15,
+          "baseAttributeId": "gci"
+        }
+      }
+    ],
+    "payee": "mentor",
+    "version": 1,
+    "updatedAt": "2026-09-03T16:00:00.000Z"
+  },
+  {
+    "id": "mentorship_program_fee",
+    "label": "Mentorship Program Fee",
+    "waivable": false,
+    "conditions": {
+      "kind": "group",
+      "op": "AND",
+      "children": [
+        {
+          "kind": "condition",
+          "attributeId": "plan",
+          "operator": "eq",
+          "value": "standard"
+        },
+        {
+          "kind": "condition",
+          "attributeId": "milestone",
+          "operator": "neq",
+          "value": "graduated"
+        }
+      ]
+    },
+    "branches": [
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": []
+        },
+        "amount": {
+          "form": "rate",
+          "pct": 10,
+          "baseAttributeId": "gci"
+        }
+      }
+    ],
+    "payee": "roa",
+    "version": 1,
+    "updatedAt": "2026-09-03T16:00:00.000Z"
+  },
+  {
+    "id": "test",
+    "label": "test",
+    "waivable": false,
+    "conditions": {
+      "kind": "group",
+      "op": "AND",
+      "children": []
+    },
+    "branches": [
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": []
+        },
+        "amount": {
+          "form": "flat",
+          "cents": 10000
+        }
+      }
+    ],
+    "payee": "roa",
+    "version": 1,
+    "updatedAt": "2026-09-03T15:51:57.529Z"
+  },
+  {
+    "id": "standard_plan",
+    "label": "Standard Plan (Company Dollar + Floor)",
+    "waivable": false,
+    "conditions": {
+      "kind": "group",
+      "op": "AND",
+      "children": [
+        {
+          "kind": "condition",
+          "attributeId": "plan",
+          "operator": "eq",
+          "value": "standard"
+        }
+      ]
+    },
+    "branches": [
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": [
+            {
+              "kind": "condition",
+              "attributeId": "primary_type",
+              "operator": "eq",
+              "value": "lease"
+            },
+            {
+              "kind": "condition",
+              "attributeId": "source",
+              "operator": "neq",
+              "value": "inbound_referral"
+            }
+          ]
+        },
+        "amount": {
+          "form": "max",
+          "a": {
+            "form": "ladder",
+            "tracker": "cap_accumulation",
+            "rateType": "percent",
+            "baseAttributeId": "gci",
+            "rows": [
+              {
+                "upTo": 1400000,
+                "value": 15
+              },
+              {
+                "upTo": null,
+                "value": 0
+              }
+            ]
+          },
+          "b": {
+            "form": "flat",
+            "cents": 12500
+          }
+        }
+      },
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": [
+            {
+              "kind": "condition",
+              "attributeId": "primary_type",
+              "operator": "eq",
+              "value": "sale"
+            },
+            {
+              "kind": "condition",
+              "attributeId": "source",
+              "operator": "neq",
+              "value": "inbound_referral"
+            },
+            {
+              "kind": "condition",
+              "attributeId": "deal_subtype",
+              "operator": "not_in",
+              "value": [
+                "reo_hud",
+                "short_sale",
+                "bpo"
+              ]
+            },
+            {
+              "kind": "condition",
+              "attributeId": "personal_allowance",
+              "operator": "eq",
+              "value": "not_active"
+            },
+            {
+              "kind": "condition",
+              "attributeId": "cap_position",
+              "operator": "eq",
+              "value": "pre_cap"
+            }
+          ]
+        },
+        "amount": {
+          "form": "max",
+          "a": {
+            "form": "ladder",
+            "tracker": "cap_accumulation",
+            "rateType": "percent",
+            "baseAttributeId": "gci",
+            "rows": [
+              {
+                "upTo": 1400000,
+                "value": 15
+              },
+              {
+                "upTo": null,
+                "value": 0
+              }
+            ]
+          },
+          "b": {
+            "form": "flat",
+            "cents": 55000
+          }
+        }
+      },
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": []
+        },
+        "amount": {
+          "form": "ladder",
+          "tracker": "cap_accumulation",
+          "rateType": "percent",
+          "baseAttributeId": "gci",
+          "rows": [
+            {
+              "upTo": 1400000,
+              "value": 15
+            },
+            {
+              "upTo": null,
+              "value": 0
+            }
+          ]
+        }
+      }
+    ],
+    "payee": "roa",
+    "version": 3,
+    "updatedAt": "2026-09-03T16:01:42.728Z"
+  },
+  {
+    "id": "standard_plan",
+    "label": "Standard Plan (Company Dollar + Floor)",
+    "waivable": false,
+    "conditions": {
+      "kind": "group",
+      "op": "OR",
+      "children": [
+        {
+          "kind": "condition",
+          "attributeId": "plan",
+          "operator": "eq",
+          "value": "standard"
+        },
+        {
+          "kind": "condition",
+          "attributeId": "plan",
+          "operator": "eq",
+          "value": "half_cap"
+        }
+      ]
+    },
+    "branches": [
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": [
+            {
+              "kind": "condition",
+              "attributeId": "primary_type",
+              "operator": "eq",
+              "value": "lease"
+            },
+            {
+              "kind": "condition",
+              "attributeId": "source",
+              "operator": "neq",
+              "value": "inbound_referral"
+            },
+            {
+              "kind": "condition",
+              "attributeId": "plan",
+              "operator": "eq",
+              "value": "standard"
+            }
+          ]
+        },
+        "amount": {
+          "form": "max",
+          "a": {
+            "form": "ladder",
+            "tracker": "cap_accumulation",
+            "rateType": "percent",
+            "baseAttributeId": "gci",
+            "rows": [
+              {
+                "upTo": 1400000,
+                "value": 15
+              },
+              {
+                "upTo": null,
+                "value": 0
+              }
+            ]
+          },
+          "b": {
+            "form": "flat",
+            "cents": 12500
+          }
+        }
+      },
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": [
+            {
+              "kind": "condition",
+              "attributeId": "primary_type",
+              "operator": "eq",
+              "value": "sale"
+            },
+            {
+              "kind": "condition",
+              "attributeId": "source",
+              "operator": "neq",
+              "value": "inbound_referral"
+            },
+            {
+              "kind": "condition",
+              "attributeId": "deal_subtype",
+              "operator": "not_in",
+              "value": [
+                "reo_hud",
+                "short_sale",
+                "bpo"
+              ]
+            },
+            {
+              "kind": "condition",
+              "attributeId": "personal_allowance",
+              "operator": "eq",
+              "value": "not_active"
+            },
+            {
+              "kind": "condition",
+              "attributeId": "cap_position",
+              "operator": "eq",
+              "value": "pre_cap"
+            }
+          ]
+        },
+        "amount": {
+          "form": "max",
+          "a": {
+            "form": "ladder",
+            "tracker": "cap_accumulation",
+            "rateType": "percent",
+            "baseAttributeId": "gci",
+            "rows": [
+              {
+                "upTo": 1400000,
+                "value": 15
+              },
+              {
+                "upTo": null,
+                "value": 0
+              }
+            ]
+          },
+          "b": {
+            "form": "flat",
+            "cents": 55000
+          }
+        }
+      },
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": []
+        },
+        "amount": {
+          "form": "ladder",
+          "tracker": "cap_accumulation",
+          "rateType": "percent",
+          "baseAttributeId": "gci",
+          "rows": [
+            {
+              "upTo": 1400000,
+              "value": 15
+            },
+            {
+              "upTo": null,
+              "value": 0
+            }
+          ]
+        }
+      },
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": [
+            {
+              "kind": "condition",
+              "attributeId": "plan",
+              "operator": "eq",
+              "value": "half_cap"
+            }
+          ]
+        },
+        "amount": {
+          "form": "max",
+          "a": {
+            "form": "ladder",
+            "tracker": "cap_accumulation",
+            "rateType": "percent",
+            "baseAttributeId": "gci",
+            "rows": [
+              {
+                "upTo": 700000,
+                "value": 0
+              },
+              {
+                "upTo": 0,
+                "value": 15
+              }
+            ]
+          },
+          "b": {
+            "form": "flat",
+            "cents": 15000
+          }
+        }
+      }
+    ],
+    "payee": "roa",
+    "version": 4,
+    "updatedAt": "2026-09-03T16:08:37.906Z"
   }
 ]

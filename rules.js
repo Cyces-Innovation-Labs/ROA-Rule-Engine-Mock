@@ -81,8 +81,20 @@ const TRACKER_LABELS = {
   deal_counts_personal: 'Deal Counts — Personal',
 };
 
-const PAYEE_OPTIONS = ['roa', 'agent'];
-const PAYEE_LABELS = { roa: 'ROA', agent: 'Agent' };
+// 'statutory'/'mentor'/'referring_agent'/'external_brokerage' are the same
+// flat-label simplification as 'team' — this app has no real Party model
+// (see CLAUDE.md), so a rule that in the real spec pays a specific person/
+// entity just names the ROLE here, not an actual party record.
+const PAYEE_OPTIONS = ['roa', 'agent', 'team', 'statutory', 'mentor', 'referring_agent', 'external_brokerage'];
+const PAYEE_LABELS = {
+  roa: 'ROA',
+  agent: 'Agent',
+  team: 'Team Account',
+  statutory: 'Statutory (state/government)',
+  mentor: 'Assigned Mentor',
+  referring_agent: 'Referring Agent (ROA)',
+  external_brokerage: 'External Brokerage',
+};
 
 function emptyAmount(form) {
   switch (form) {
@@ -105,6 +117,43 @@ function emptyAmount(form) {
   }
 }
 
+// --- Branches — ordered (condition, amount) pairs on one Rule -----------
+//
+// Resolved (this session's design discussion — see CLAUDE.md/memory once
+// written up): a Rule's payout is computed by its `branches` list, evaluated
+// top-to-bottom, first matching branch wins. This replaces a single
+// `amount` field and is how this app expresses "one Rule per fee_type,
+// internally variant by scenario" (e.g. Company Dollar's floor differs by
+// lease vs sale vs no-floor) WITHOUT the Economic Model spec's separate
+// `kind: create/adjust` rules or a formula/branching language inside one
+// amount expression — each branch's `when` is an ordinary ConditionGroup,
+// each branch's `amount` is an ordinary AmountExpression. The last branch
+// should normally have an empty `when` (matches everything) as a catch-all,
+// so no transaction silently falls through with no computed amount — the
+// UI doesn't enforce this structurally, it's an authoring convention.
+//
+// `kind` (create/adjust/produce/mark) was deliberately NOT added to this
+// schema: every Rule currently needed by this app fires as an independent,
+// self-contained line. Cross-rule sequencing/dependency (e.g. a rule that
+// needs to run only after another rule's line has been computed) was
+// briefly modeled as an `order` field and has been removed again pending
+// further discussion — see CLAUDE.md/memory once written up.
+
+function emptyBranch() {
+  return { when: emptyConditionGroup(), amount: emptyAmount('flat') };
+}
+
+function validateBranches(branches, attributesById) {
+  if (!Array.isArray(branches) || branches.length === 0) return 'Add at least one branch.';
+  for (const branch of branches) {
+    const whenError = validateConditionGroup(branch.when, attributesById);
+    if (whenError) return whenError;
+    const amountError = validateAmount(branch.amount, attributesById);
+    if (amountError) return amountError;
+  }
+  return null;
+}
+
 function dollarsToCents(dollarsStr) {
   const n = parseFloat(dollarsStr);
   return Number.isFinite(n) ? Math.round(n * 100) : 0;
@@ -118,8 +167,9 @@ function buildRule(input) {
   return {
     id: input.id,
     label: input.label,
+    waivable: !!input.waivable,
     conditions: input.conditions,
-    amount: input.amount,
+    branches: input.branches,
     payee: input.payee,
   };
 }
@@ -204,8 +254,8 @@ function validateRule(input, existingRules, editingId, attributesById) {
   const conditionsError = validateConditionGroup(input.conditions, attributesById);
   if (conditionsError) errors.conditions = conditionsError;
 
-  const amountError = validateAmount(input.amount, attributesById);
-  if (amountError) errors.amount = amountError;
+  const branchesError = validateBranches(input.branches, attributesById);
+  if (branchesError) errors.branches = branchesError;
 
   if (!PAYEE_OPTIONS.includes(input.payee)) errors.payee = 'Choose a payee.';
 

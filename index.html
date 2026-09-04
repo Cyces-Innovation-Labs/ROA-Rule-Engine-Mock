@@ -414,6 +414,7 @@
       function handleEdit(attribute) {
         setEditingAttribute(attribute);
         setShowForm(true);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       }
 
       // Delete removes every version of this Attribute — not itself
@@ -866,6 +867,82 @@
       );
     }
 
+    // Branches — ordered (When condition, Amount) pairs on one Rule,
+    // evaluated top-to-bottom, first match wins. Replaces a single
+    // top-level amount so one Rule ("one fee_type") can vary its payout by
+    // scenario (e.g. Company Dollar's floor differs by lease/sale/no-floor)
+    // without a separate kind:adjust rule or branching logic inside the
+    // amount expression itself — see rules.js's emptyBranch()/validateBranches().
+    function BranchEditor({ branch, index, isLast, attributes, numberAttributes, onChange, onRemove, onMoveUp, onMoveDown, canRemove }) {
+      return (
+        <div className="branch-editor">
+          <div className="branch-header">
+            <strong>Branch {index + 1}{isLast ? ' (catch-all — leave "When" empty to match everything else)' : ''}</strong>
+            <div className="branch-actions">
+              <button type="button" className="btn-link" onClick={onMoveUp} disabled={index === 0}>Move up</button>
+              <button type="button" className="btn-link" onClick={onMoveDown} disabled={isLast}>Move down</button>
+              <button type="button" className="btn-link btn-danger" onClick={onRemove} disabled={!canRemove}>Remove branch</button>
+            </div>
+          </div>
+          <div className="field">
+            <label>When</label>
+            <ConditionGroupEditor group={branch.when} attributes={attributes} onChange={(when) => onChange({ ...branch, when })} depth={0} />
+          </div>
+          <div className="field">
+            <label>Amount</label>
+            <AmountExpressionEditor
+              amount={branch.amount}
+              numberAttributes={numberAttributes}
+              allAttributes={attributes}
+              onChange={(amount) => onChange({ ...branch, amount })}
+            />
+          </div>
+        </div>
+      );
+    }
+
+    function BranchesEditor({ branches, attributes, numberAttributes, onChange }) {
+      function updateBranch(i, updated) {
+        const next = branches.slice();
+        next[i] = updated;
+        onChange(next);
+      }
+      function removeBranch(i) {
+        const next = branches.slice();
+        next.splice(i, 1);
+        onChange(next);
+      }
+      function moveBranch(i, direction) {
+        const next = branches.slice();
+        const j = i + direction;
+        [next[i], next[j]] = [next[j], next[i]];
+        onChange(next);
+      }
+
+      return (
+        <div className="branches-editor">
+          {branches.map((branch, i) => (
+            <BranchEditor
+              key={i}
+              branch={branch}
+              index={i}
+              isLast={i === branches.length - 1}
+              canRemove={branches.length > 1}
+              attributes={attributes}
+              numberAttributes={numberAttributes}
+              onChange={(updated) => updateBranch(i, updated)}
+              onRemove={() => removeBranch(i)}
+              onMoveUp={() => moveBranch(i, -1)}
+              onMoveDown={() => moveBranch(i, 1)}
+            />
+          ))}
+          <button type="button" className="btn-secondary" onClick={() => onChange([...branches, emptyBranch()])}>
+            + Branch
+          </button>
+        </div>
+      );
+    }
+
     function describeCondition(condition, attributesById) {
       const attribute = attributesById[condition.attributeId];
       if (!attribute) return '?';
@@ -905,13 +982,20 @@
       }
     }
 
+    function describeBranches(branches, attributesById) {
+      return branches
+        .map((b, i) => `${i + 1}. ${describeConditionGroup(b.when, attributesById)} → ${describeAmount(b.amount, attributesById)}`)
+        .join('  |  ');
+    }
+
     function emptyRuleForm() {
       return {
         id: '',
         idTouched: false,
         label: '',
+        waivable: false,
         conditions: emptyConditionGroup(),
-        amount: emptyAmount('flat'),
+        branches: [emptyBranch()],
         payee: 'roa',
       };
     }
@@ -921,8 +1005,9 @@
         id: rule.id,
         idTouched: true,
         label: rule.label,
+        waivable: !!rule.waivable,
         conditions: rule.conditions,
-        amount: rule.amount,
+        branches: rule.branches,
         payee: rule.payee,
       };
     }
@@ -968,20 +1053,20 @@
           </div>
 
           <div className="field">
-            <label>Conditions</label>
+            <label>Conditions (does this Rule apply at all?)</label>
             <ConditionGroupEditor group={form.conditions} attributes={attributes} onChange={(conditions) => update({ conditions })} depth={0} />
             {errors.conditions && <div className="field-error">{errors.conditions}</div>}
           </div>
 
           <div className="field">
-            <label>Amount</label>
-            <AmountExpressionEditor
-              amount={form.amount}
+            <label>Branches (evaluated in order — first matching "When" wins; give the last branch an empty "When" as a catch-all)</label>
+            <BranchesEditor
+              branches={form.branches}
+              attributes={attributes}
               numberAttributes={numberAttributes}
-              allAttributes={attributes}
-              onChange={(amount) => update({ amount })}
+              onChange={(branches) => update({ branches })}
             />
-            {errors.amount && <div className="field-error">{errors.amount}</div>}
+            {errors.branches && <div className="field-error">{errors.branches}</div>}
           </div>
 
           <div className="field">
@@ -992,6 +1077,13 @@
               ))}
             </select>
             {errors.payee && <div className="field-error">{errors.payee}</div>}
+          </div>
+
+          <div className="field">
+            <label>
+              <input type="checkbox" checked={form.waivable} onChange={(e) => update({ waivable: e.target.checked })} />
+              {' '}Waivable (an authorized person may suppress this Rule for a specific transaction)
+            </label>
           </div>
 
           <div className="form-actions">
@@ -1008,8 +1100,9 @@
           <td>{rule.label} <span className="version-tag">v{rule.version}</span></td>
           <td><code>{rule.id}</code></td>
           <td>{describeConditionGroup(rule.conditions, attributesById)}</td>
-          <td>{describeAmount(rule.amount, attributesById)}</td>
+          <td>{describeBranches(rule.branches, attributesById)}</td>
           <td>{PAYEE_LABELS[rule.payee]}</td>
+          <td>{rule.waivable ? 'Yes' : 'No'}</td>
           <td className="actions-cell">
             <button className="btn-link" onClick={() => onEdit(rule)}>Edit</button>
             <button className="btn-link" onClick={() => onToggleHistory(rule.id)}>
@@ -1030,8 +1123,9 @@
               <th>Updated</th>
               <th>Label</th>
               <th>Conditions</th>
-              <th>Amount</th>
+              <th>Branches</th>
               <th>Payee</th>
+              <th>Waivable</th>
             </tr>
           </thead>
           <tbody>
@@ -1041,8 +1135,9 @@
                 <td>{new Date(v.updatedAt).toLocaleString()}</td>
                 <td>{v.label}</td>
                 <td>{describeConditionGroup(v.conditions, attributesById)}</td>
-                <td>{describeAmount(v.amount, attributesById)}</td>
+                <td>{describeBranches(v.branches, attributesById)}</td>
                 <td>{PAYEE_LABELS[v.payee]}</td>
+                <td>{v.waivable ? 'Yes' : 'No'}</td>
               </tr>
             ))}
           </tbody>
@@ -1093,6 +1188,7 @@
       function handleEdit(rule) {
         setEditingRule(rule);
         setShowForm(true);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       }
 
       function handleDelete(rule) {
@@ -1143,8 +1239,9 @@
                   <th>Label</th>
                   <th>Key</th>
                   <th>Conditions</th>
-                  <th>Amount</th>
+                  <th>Branches</th>
                   <th>Payee</th>
+                  <th>Waivable</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -1161,7 +1258,7 @@
                     />
                     {expandedHistoryId === r.id && (
                       <tr className="history-row">
-                        <td colSpan="6">
+                        <td colSpan="7">
                           <RuleHistoryTable versions={ruleVersionsForId(allVersions, r.id)} attributesById={attributesById} />
                         </td>
                       </tr>

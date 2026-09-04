@@ -491,6 +491,32 @@ code {
   margin-top: 8px;
 }
 
+/* --- Branches editor (ordered When/Amount pairs, first match wins) --- */
+
+.branches-editor {
+  margin-top: 8px;
+}
+
+.branch-editor {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 12px;
+  margin-bottom: 12px;
+  background: #fafbfc;
+}
+
+.branch-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.branch-actions {
+  display: flex;
+  gap: 8px;
+}
+
 .ladder-row {
   display: flex;
   align-items: center;
