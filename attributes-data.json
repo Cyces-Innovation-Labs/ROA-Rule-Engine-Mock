@@ -601,5 +601,32 @@
     "allowedValuesSource": null,
     "version": 1,
     "updatedAt": "2026-09-03T00:00:00.000Z"
+  },
+  {
+    "id": "side_percentage",
+    "label": "Side Percentage",
+    "type": "number",
+    "operators": [
+      "eq",
+      "neq",
+      "gt",
+      "lt",
+      "gte",
+      "lte",
+      "between",
+      "in",
+      "not_in",
+      "is_empty",
+      "is_not_empty"
+    ],
+    "valueWidget": "number_input",
+    "valueLabel": "Side Percentage (%)",
+    "resolver": {
+      "kind": "path",
+      "path": "agent.side_percentage"
+    },
+    "allowedValuesSource": null,
+    "version": 1,
+    "updatedAt": "2026-09-04T00:00:00.000Z"
   }
 ]

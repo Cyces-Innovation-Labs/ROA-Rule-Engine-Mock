@@ -81,6 +81,22 @@ const TRACKER_LABELS = {
   deal_counts_personal: 'Deal Counts — Personal',
 };
 
+// --- Contributes — which tracker (if any) a Rule's own payment posts to --
+//
+// Separate, general, RULE-level field — independent of amount form. Until
+// now, a tracker only ever showed up as a side effect of `ladder`/
+// `capped_by` needing one to compute the amount (reads a tier/headroom).
+// That's a computation input, not a declaration of effect — a rule using
+// `flat`/`rate`/`max`/`min`/`from_facts` had no way to say "I still affect
+// tracker X" even though it might (or, just as validly, might not — this
+// is optional, most rules contribute to nothing). Matches the real spec's
+// `contributes` field, kept separate from `reads_tracker`/the ladder's own
+// tracker for the same reason: reading and posting are different concerns
+// that happen to coincide for this app's current rules, but shouldn't be
+// conflated into one field going forward.
+const CONTRIBUTES_TO_TRACKER_OPTIONS = ['none', ...TRACKER_OPTIONS];
+const CONTRIBUTES_TO_TRACKER_LABELS = { none: 'None', ...TRACKER_LABELS };
+
 // 'statutory'/'mentor'/'referring_agent'/'external_brokerage' are the same
 // flat-label simplification as 'team' — this app has no real Party model
 // (see CLAUDE.md), so a rule that in the real spec pays a specific person/
@@ -96,10 +112,67 @@ const PAYEE_LABELS = {
   external_brokerage: 'External Brokerage',
 };
 
+// --- Applies / Split — how a Rule fires and divides among participants --
+//
+// The Economic Model spec's `applies` field, all four values (see
+// economic-model-rule-definition memory) — this is the "firing subject":
+// how many times a Rule fires and whose facts/trackers each firing reads.
+// Two genuinely different mechanisms, easy to conflate (a mistake made
+// once already this session — see CLAUDE.md/memory once written up):
+//
+//   - per_transaction / per_side: the Rule's amount is computed ONCE (for
+//     the whole deal, or once per side), then that ONE result is optionally
+//     divided among people who share it — that's what `split` is for.
+//     Real spec example: Risk Fee is per-side ($50/side), and split by-side-%
+//     divides one side's $50 among its own co-agents if there's more than
+//     one (e.g. a 70/30 team side -> $35/$15). `split` is only meaningful
+//     for these two `applies` values.
+//   - per_agent_side / per_distinct_agent: the Rule's ENTIRE amount formula
+//     runs independently, once per firing — there is no shared total to
+//     divide, because there was never one number to begin with. Each
+//     firing resolves its own agent-scoped base (e.g. `agent_gci_share`),
+//     so `split` doesn't apply here at all. The two values differ in what
+//     counts as "once": per_agent_side fires once per (agent, side) pair —
+//     a dual-agency agent (both sides of one deal) gets TWO independent
+//     firings/amounts. per_distinct_agent fires once per PERSON regardless
+//     of how many sides they're on — dual agency gets ONE firing. Real
+//     spec example: Technology Fee is per-distinct-agent (dual agency pays
+//     one installment, not two) — Company Dollar is per-agent-side (each
+//     side's own share runs its own ladder).
+//
+// NOTE: this describes intent only. There is no evaluation engine yet
+// (see CLAUDE.md Open items) — nothing actually fires a rule multiple
+// times, enumerates a transaction's sides/participants, or reads a split
+// Attribute per firing. These fields are stored on the Rule so that intent
+// isn't lost, but nothing computes it yet.
+const APPLIES_OPTIONS = ['per_transaction', 'per_side', 'per_agent_side', 'per_distinct_agent'];
+const APPLIES_LABELS = {
+  per_transaction: 'Once per transaction',
+  per_side: 'Once per side',
+  per_agent_side: 'Once per agent per side (dual agency = 2 firings)',
+  per_distinct_agent: 'Once per distinct agent (dual agency = 1 firing)',
+};
+
+// Only meaningful when applies is 'per_transaction' or 'per_side' — see
+// note above. Ignored/cleared for 'per_agent_side'/'per_distinct_agent'.
+const SPLIT_OPTIONS = ['none', 'by_percent_attribute'];
+const SPLIT_LABELS = {
+  none: 'No split',
+  by_percent_attribute: 'Divide by a percentage Attribute',
+};
+
+const APPLIES_ALLOWING_SPLIT = ['per_transaction', 'per_side'];
+
 function emptyAmount(form) {
   switch (form) {
     case 'flat':
-      return { form: 'flat', cents: 0 };
+      // baseAttributeId here isn't a computation input (cents is fixed) —
+      // it declares which balance this flat amount deducts from, same
+      // field/meaning as rate's/ladder's base. Without it, a flat fee had
+      // no way to say what it comes out of (spotted as a real gap this
+      // session — payee only says where money goes, never where it's
+      // drawn from).
+      return { form: 'flat', cents: 0, baseAttributeId: '' };
     case 'rate':
       return { form: 'rate', pct: 0, baseAttributeId: '' };
     case 'max':
@@ -171,6 +244,10 @@ function buildRule(input) {
     conditions: input.conditions,
     branches: input.branches,
     payee: input.payee,
+    applies: input.applies,
+    split: APPLIES_ALLOWING_SPLIT.includes(input.applies) ? input.split : 'none',
+    splitAttributeId: APPLIES_ALLOWING_SPLIT.includes(input.applies) && input.split === 'by_percent_attribute' ? input.splitAttributeId : '',
+    contributesToTracker: input.contributesToTracker || 'none',
   };
 }
 
@@ -206,8 +283,12 @@ function validateCondition(condition, attributesById) {
 function validateAmount(amount, attributesById) {
   if (!amount || !AMOUNT_FORMS.includes(amount.form)) return 'Choose an amount form.';
   switch (amount.form) {
-    case 'flat':
-      return Number.isFinite(amount.cents) ? null : 'Enter a flat amount.';
+    case 'flat': {
+      if (!Number.isFinite(amount.cents)) return 'Enter a flat amount.';
+      const deductsFrom = attributesById[amount.baseAttributeId];
+      if (!deductsFrom || deductsFrom.type !== 'number') return 'Choose a number Attribute this amount deducts from.';
+      return null;
+    }
     case 'rate': {
       if (!Number.isFinite(amount.pct)) return 'Enter a percentage.';
       const base = attributesById[amount.baseAttributeId];
@@ -220,9 +301,15 @@ function validateAmount(amount, attributesById) {
     case 'ladder': {
       if (!TRACKER_OPTIONS.includes(amount.tracker)) return 'Choose a tracker.';
       if (!Array.isArray(amount.rows) || amount.rows.length === 0) return 'Add at least one ladder row.';
-      if (amount.rateType === 'percent') {
-        const base = attributesById[amount.baseAttributeId];
-        if (!base || base.type !== 'number') return 'Choose a number Attribute as the ladder base.';
+      // baseAttributeId is required either way now: for a percent ladder
+      // it's the multiplier base, for a flat-tier ladder (dollar amounts
+      // per row) it declares what balance those tier amounts deduct from —
+      // same dual meaning as the flat amount form (see emptyAmount('flat')).
+      const base = attributesById[amount.baseAttributeId];
+      if (!base || base.type !== 'number') {
+        return amount.rateType === 'percent'
+          ? 'Choose a number Attribute as the ladder base.'
+          : 'Choose a number Attribute this ladder deducts from.';
       }
       return null;
     }
@@ -258,6 +345,22 @@ function validateRule(input, existingRules, editingId, attributesById) {
   if (branchesError) errors.branches = branchesError;
 
   if (!PAYEE_OPTIONS.includes(input.payee)) errors.payee = 'Choose a payee.';
+
+  if (!APPLIES_OPTIONS.includes(input.applies)) errors.applies = 'Choose how this Rule applies.';
+
+  if (APPLIES_ALLOWING_SPLIT.includes(input.applies)) {
+    if (!SPLIT_OPTIONS.includes(input.split)) errors.split = 'Choose a split.';
+    if (input.split === 'by_percent_attribute') {
+      const splitAttribute = attributesById[input.splitAttributeId];
+      if (!splitAttribute || splitAttribute.type !== 'number') errors.splitAttributeId = 'Choose a number Attribute for the split percentage.';
+    }
+  }
+
+  // Optional — 'none' is always valid. Only reject a value that isn't a
+  // real tracker at all.
+  if (!CONTRIBUTES_TO_TRACKER_OPTIONS.includes(input.contributesToTracker)) {
+    errors.contributesToTracker = 'Choose a tracker, or None.';
+  }
 
   return errors;
 }

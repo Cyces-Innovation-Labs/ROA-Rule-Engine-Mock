@@ -36,13 +36,18 @@
         },
         "amount": {
           "form": "flat",
-          "cents": 5000
+          "cents": 5000,
+          "baseAttributeId": "gci"
         }
       }
     ],
     "payee": "roa",
     "version": 1,
-    "updatedAt": "2026-09-03T00:00:00.000Z"
+    "updatedAt": "2026-09-03T00:00:00.000Z",
+    "applies": "per_side",
+    "split": "by_percent_attribute",
+    "splitAttributeId": "side_percentage",
+    "contributesToTracker": "none"
   },
   {
     "id": "standard_plan",
@@ -100,7 +105,8 @@
           },
           "b": {
             "form": "flat",
-            "cents": 12500
+            "cents": 12500,
+            "baseAttributeId": "gci"
           }
         }
       },
@@ -165,7 +171,8 @@
           },
           "b": {
             "form": "flat",
-            "cents": 50000
+            "cents": 50000,
+            "baseAttributeId": "gci"
           }
         }
       },
@@ -195,7 +202,11 @@
     ],
     "payee": "roa",
     "version": 2,
-    "updatedAt": "2026-09-03T00:00:00.000Z"
+    "updatedAt": "2026-09-03T00:00:00.000Z",
+    "applies": "per_transaction",
+    "split": "none",
+    "splitAttributeId": "",
+    "contributesToTracker": "cap_accumulation"
   },
   {
     "id": "team_account_cut",
@@ -229,7 +240,11 @@
     ],
     "payee": "team",
     "version": 1,
-    "updatedAt": "2026-09-03T00:00:00.000Z"
+    "updatedAt": "2026-09-03T00:00:00.000Z",
+    "applies": "per_transaction",
+    "split": "none",
+    "splitAttributeId": "",
+    "contributesToTracker": "none"
   },
   {
     "id": "team_account_cut",
@@ -263,7 +278,11 @@
     ],
     "payee": "team",
     "version": 2,
-    "updatedAt": "2026-09-03T15:36:37.469Z"
+    "updatedAt": "2026-09-03T15:36:37.469Z",
+    "applies": "per_transaction",
+    "split": "none",
+    "splitAttributeId": "",
+    "contributesToTracker": "none"
   },
   {
     "id": "inbound_referral_fee",
@@ -296,7 +315,11 @@
     ],
     "payee": "external_brokerage",
     "version": 1,
-    "updatedAt": "2026-09-03T16:00:00.000Z"
+    "updatedAt": "2026-09-03T16:00:00.000Z",
+    "applies": "per_transaction",
+    "split": "none",
+    "splitAttributeId": "",
+    "contributesToTracker": "none"
   },
   {
     "id": "outbound_referral_passthrough",
@@ -335,7 +358,11 @@
     ],
     "payee": "referring_agent",
     "version": 1,
-    "updatedAt": "2026-09-03T16:00:00.000Z"
+    "updatedAt": "2026-09-03T16:00:00.000Z",
+    "applies": "per_transaction",
+    "split": "none",
+    "splitAttributeId": "",
+    "contributesToTracker": "none"
   },
   {
     "id": "personal_deal_fee",
@@ -368,13 +395,18 @@
         },
         "amount": {
           "form": "flat",
-          "cents": 85000
+          "cents": 85000,
+          "baseAttributeId": "gci"
         }
       }
     ],
     "payee": "roa",
     "version": 1,
-    "updatedAt": "2026-09-03T16:00:00.000Z"
+    "updatedAt": "2026-09-03T16:00:00.000Z",
+    "applies": "per_transaction",
+    "split": "none",
+    "splitAttributeId": "",
+    "contributesToTracker": "none"
   },
   {
     "id": "technology_fee",
@@ -404,7 +436,8 @@
           "tracker": "tech_fee_bucket",
           "amount": {
             "form": "flat",
-            "cents": 12500
+            "cents": 12500,
+            "baseAttributeId": "gci"
           }
         }
       },
@@ -419,14 +452,19 @@
           "tracker": "tech_fee_bucket",
           "amount": {
             "form": "flat",
-            "cents": 25000
+            "cents": 25000,
+            "baseAttributeId": "gci"
           }
         }
       }
     ],
     "payee": "roa",
     "version": 1,
-    "updatedAt": "2026-09-03T16:00:00.000Z"
+    "updatedAt": "2026-09-03T16:00:00.000Z",
+    "applies": "per_distinct_agent",
+    "split": "none",
+    "splitAttributeId": "",
+    "contributesToTracker": "tech_fee_bucket"
   },
   {
     "id": "delinquency_fee",
@@ -453,13 +491,18 @@
         },
         "amount": {
           "form": "flat",
-          "cents": 15000
+          "cents": 15000,
+          "baseAttributeId": "gci"
         }
       }
     ],
     "payee": "roa",
     "version": 1,
-    "updatedAt": "2026-09-03T16:00:00.000Z"
+    "updatedAt": "2026-09-03T16:00:00.000Z",
+    "applies": "per_transaction",
+    "split": "by_percent_attribute",
+    "splitAttributeId": "side_percentage",
+    "contributesToTracker": "none"
   },
   {
     "id": "capped_status_fee",
@@ -502,7 +545,7 @@
             "form": "ladder",
             "tracker": "post_cap_bucket",
             "rateType": "flat",
-            "baseAttributeId": "",
+            "baseAttributeId": "gci",
             "rows": [
               {
                 "upTo": 500000,
@@ -544,7 +587,7 @@
             "form": "ladder",
             "tracker": "post_cap_bucket",
             "rateType": "flat",
-            "baseAttributeId": "",
+            "baseAttributeId": "gci",
             "rows": [
               {
                 "upTo": 500000,
@@ -586,7 +629,7 @@
             "form": "ladder",
             "tracker": "post_cap_bucket",
             "rateType": "flat",
-            "baseAttributeId": "",
+            "baseAttributeId": "gci",
             "rows": [
               {
                 "upTo": 500000,
@@ -614,7 +657,7 @@
           "form": "ladder",
           "tracker": "post_cap_bucket",
           "rateType": "flat",
-          "baseAttributeId": "",
+          "baseAttributeId": "gci",
           "rows": [
             {
               "upTo": 500000,
@@ -634,7 +677,11 @@
     ],
     "payee": "roa",
     "version": 1,
-    "updatedAt": "2026-09-03T16:00:00.000Z"
+    "updatedAt": "2026-09-03T16:00:00.000Z",
+    "applies": "per_distinct_agent",
+    "split": "none",
+    "splitAttributeId": "",
+    "contributesToTracker": "post_cap_bucket"
   },
   {
     "id": "roa_leads_program",
@@ -668,7 +715,11 @@
     ],
     "payee": "roa",
     "version": 1,
-    "updatedAt": "2026-09-03T16:00:00.000Z"
+    "updatedAt": "2026-09-03T16:00:00.000Z",
+    "applies": "per_transaction",
+    "split": "none",
+    "splitAttributeId": "",
+    "contributesToTracker": "none"
   },
   {
     "id": "kairos_program",
@@ -702,7 +753,11 @@
     ],
     "payee": "roa",
     "version": 1,
-    "updatedAt": "2026-09-03T16:00:00.000Z"
+    "updatedAt": "2026-09-03T16:00:00.000Z",
+    "applies": "per_transaction",
+    "split": "none",
+    "splitAttributeId": "",
+    "contributesToTracker": "none"
   },
   {
     "id": "il_admin_fee",
@@ -735,13 +790,18 @@
         },
         "amount": {
           "form": "flat",
-          "cents": 49500
+          "cents": 49500,
+          "baseAttributeId": "gci"
         }
       }
     ],
     "payee": "statutory",
     "version": 1,
-    "updatedAt": "2026-09-03T16:00:00.000Z"
+    "updatedAt": "2026-09-03T16:00:00.000Z",
+    "applies": "per_transaction",
+    "split": "by_percent_attribute",
+    "splitAttributeId": "side_percentage",
+    "contributesToTracker": "none"
   },
   {
     "id": "wa_workers_comp",
@@ -768,13 +828,18 @@
         },
         "amount": {
           "form": "flat",
-          "cents": 0
+          "cents": 0,
+          "baseAttributeId": "gci"
         }
       }
     ],
     "payee": "statutory",
     "version": 1,
-    "updatedAt": "2026-09-03T16:00:00.000Z"
+    "updatedAt": "2026-09-03T16:00:00.000Z",
+    "applies": "per_distinct_agent",
+    "split": "none",
+    "splitAttributeId": "",
+    "contributesToTracker": "none"
   },
   {
     "id": "mentor_fee",
@@ -814,7 +879,11 @@
     ],
     "payee": "mentor",
     "version": 1,
-    "updatedAt": "2026-09-03T16:00:00.000Z"
+    "updatedAt": "2026-09-03T16:00:00.000Z",
+    "applies": "per_agent_side",
+    "split": "none",
+    "splitAttributeId": "",
+    "contributesToTracker": "none"
   },
   {
     "id": "mentorship_program_fee",
@@ -854,7 +923,11 @@
     ],
     "payee": "roa",
     "version": 1,
-    "updatedAt": "2026-09-03T16:00:00.000Z"
+    "updatedAt": "2026-09-03T16:00:00.000Z",
+    "applies": "per_agent_side",
+    "split": "none",
+    "splitAttributeId": "",
+    "contributesToTracker": "none"
   },
   {
     "id": "test",
@@ -874,13 +947,18 @@
         },
         "amount": {
           "form": "flat",
-          "cents": 10000
+          "cents": 10000,
+          "baseAttributeId": "gci"
         }
       }
     ],
     "payee": "roa",
     "version": 1,
-    "updatedAt": "2026-09-03T15:51:57.529Z"
+    "updatedAt": "2026-09-03T15:51:57.529Z",
+    "applies": "per_transaction",
+    "split": "none",
+    "splitAttributeId": "",
+    "contributesToTracker": "none"
   },
   {
     "id": "standard_plan",
@@ -938,7 +1016,8 @@
           },
           "b": {
             "form": "flat",
-            "cents": 12500
+            "cents": 12500,
+            "baseAttributeId": "gci"
           }
         }
       },
@@ -1003,7 +1082,8 @@
           },
           "b": {
             "form": "flat",
-            "cents": 55000
+            "cents": 55000,
+            "baseAttributeId": "gci"
           }
         }
       },
@@ -1033,7 +1113,11 @@
     ],
     "payee": "roa",
     "version": 3,
-    "updatedAt": "2026-09-03T16:01:42.728Z"
+    "updatedAt": "2026-09-03T16:01:42.728Z",
+    "applies": "per_transaction",
+    "split": "none",
+    "splitAttributeId": "",
+    "contributesToTracker": "cap_accumulation"
   },
   {
     "id": "standard_plan",
@@ -1103,7 +1187,8 @@
           },
           "b": {
             "form": "flat",
-            "cents": 12500
+            "cents": 12500,
+            "baseAttributeId": "gci"
           }
         }
       },
@@ -1168,7 +1253,8 @@
           },
           "b": {
             "form": "flat",
-            "cents": 55000
+            "cents": 55000,
+            "baseAttributeId": "gci"
           }
         }
       },
@@ -1228,13 +1314,18 @@
           },
           "b": {
             "form": "flat",
-            "cents": 15000
+            "cents": 15000,
+            "baseAttributeId": "gci"
           }
         }
       }
     ],
     "payee": "roa",
     "version": 4,
-    "updatedAt": "2026-09-03T16:08:37.906Z"
+    "updatedAt": "2026-09-03T16:08:37.906Z",
+    "applies": "per_agent_side",
+    "split": "none",
+    "splitAttributeId": "",
+    "contributesToTracker": "cap_accumulation"
   }
 ]

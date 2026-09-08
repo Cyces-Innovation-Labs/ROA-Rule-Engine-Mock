@@ -500,6 +500,41 @@
     // see CLAUDE.md "Domain model — Rules" for the scope-collapse decision
     // and rules.js for the condition/amount data model this UI edits.
 
+    // UX-only helper (no data-model change): groups Attributes by their
+    // resolver root (Transaction/Agent/Team, from attributes.js's own
+    // RESOLVER_ROOTS/splitResolverPath) so an <select> can render them as
+    // <optgroup>s instead of one flat 20+ item list.
+    function groupAttributesByRoot(attributes) {
+      const byRoot = new Map();
+      for (const root of RESOLVER_ROOTS) byRoot.set(root, []);
+      for (const attribute of attributes) {
+        const root = attribute.resolver && attribute.resolver.kind === 'path'
+          ? splitResolverPath(attribute.resolver.path).root
+          : 'transaction';
+        if (!byRoot.has(root)) byRoot.set(root, []);
+        byRoot.get(root).push(attribute);
+      }
+      return Array.from(byRoot.entries())
+        .filter(([, attrs]) => attrs.length > 0)
+        .map(([root, attrs]) => ({ label: RESOLVER_ROOT_LABELS[root] || root, attrs }));
+    }
+
+    function AttributeSelect({ attributes, value, onChange, placeholder }) {
+      const groups = groupAttributesByRoot(attributes);
+      return (
+        <select value={value} onChange={(e) => onChange(e.target.value)}>
+          <option value="" disabled>{placeholder || 'Attribute...'}</option>
+          {groups.map((g) => (
+            <optgroup key={g.label} label={g.label}>
+              {g.attrs.map((a) => (
+                <option key={a.id} value={a.id}>{a.label}</option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
+      );
+    }
+
     function ConditionValueInput({ attribute, operator, value, onChange }) {
       const shape = conditionValueShape(operator);
       if (shape === 'none') return null;
@@ -597,14 +632,14 @@
       }
 
       return (
-        <div className="condition-row">
-          <select value={condition.attributeId} onChange={(e) => handleAttributeChange(e.target.value)}>
-            <option value="" disabled>Attribute...</option>
-            {attributes.map((a) => (
-              <option key={a.id} value={a.id}>{a.label}</option>
-            ))}
-          </select>
-          <select value={condition.operator} onChange={(e) => handleOperatorChange(e.target.value)} disabled={!attribute}>
+        <div className="condition-row condition-sentence">
+          <AttributeSelect attributes={attributes} value={condition.attributeId} onChange={handleAttributeChange} />
+          <select
+            className="condition-operator"
+            value={condition.operator}
+            onChange={(e) => handleOperatorChange(e.target.value)}
+            disabled={!attribute}
+          >
             <option value="" disabled>Test...</option>
             {operators.map((op) => (
               <option key={op} value={op}>{OPERATOR_LABELS[op] || op}</option>
@@ -618,7 +653,7 @@
               onChange={(value) => onChange({ ...condition, value })}
             />
           )}
-          <button type="button" className="btn-link btn-danger" onClick={onRemove}>Remove</button>
+          <button type="button" className="icon-btn icon-btn-danger" title="Remove condition" onClick={onRemove}>✕</button>
         </div>
       );
     }
@@ -636,29 +671,36 @@
       }
 
       return (
-        <div className="condition-group" style={{ marginLeft: depth * 20 }}>
+        <div className={`condition-group depth-${depth % 3}`} style={{ marginLeft: depth * 20 }}>
           <div className="condition-group-header">
-            <div className="radio-row">
-              <label>
-                <input type="radio" checked={group.op === 'AND'} onChange={() => onChange({ ...group, op: 'AND' })} />
-                AND
-              </label>
-              <label>
-                <input type="radio" checked={group.op === 'OR'} onChange={() => onChange({ ...group, op: 'OR' })} />
-                OR
-              </label>
+            <div className="match-toggle" role="group" aria-label="Match all or any">
+              <button
+                type="button"
+                className={'match-toggle-btn' + (group.op === 'AND' ? ' active' : '')}
+                onClick={() => onChange({ ...group, op: 'AND' })}
+              >
+                Match ALL of these
+              </button>
+              <button
+                type="button"
+                className={'match-toggle-btn' + (group.op === 'OR' ? ' active' : '')}
+                onClick={() => onChange({ ...group, op: 'OR' })}
+              >
+                Match ANY of these
+              </button>
             </div>
             {onRemove && (
-              <button type="button" className="btn-link btn-danger" onClick={onRemove}>Remove group</button>
+              <button type="button" className="icon-btn icon-btn-danger" title="Remove group" onClick={onRemove}>✕</button>
             )}
           </div>
 
           {group.children.length === 0 && (
-            <div className="empty-state condition-empty">Every transaction — no conditions in this group.</div>
+            <div className="empty-state condition-empty">Matches every transaction — no conditions added yet.</div>
           )}
 
           {group.children.map((child, i) => (
             <div key={i} className="condition-child">
+              {i > 0 && <div className="condition-connector">{group.op === 'AND' ? 'and' : 'or'}</div>}
               {child.kind === 'group' ? (
                 <ConditionGroupEditor
                   group={child}
@@ -700,7 +742,7 @@
           </select>
 
           {amount.form === 'flat' && (
-            <div className="field">
+            <div className="field rate-field">
               <label>Amount ($)</label>
               <input
                 type="number"
@@ -708,6 +750,8 @@
                 value={centsToDollars(amount.cents)}
                 onChange={(e) => onChange({ ...amount, cents: dollarsToCents(e.target.value) })}
               />
+              <label>deducted from</label>
+              <AttributeSelect attributes={numberAttributes} value={amount.baseAttributeId} onChange={(v) => onChange({ ...amount, baseAttributeId: v })} />
             </div>
           )}
 
@@ -721,12 +765,7 @@
                 onChange={(e) => onChange({ ...amount, pct: Number(e.target.value) })}
               />
               <label>of</label>
-              <select value={amount.baseAttributeId} onChange={(e) => onChange({ ...amount, baseAttributeId: e.target.value })}>
-                <option value="" disabled>Choose Attribute...</option>
-                {numberAttributes.map((a) => (
-                  <option key={a.id} value={a.id}>{a.label}</option>
-                ))}
-              </select>
+              <AttributeSelect attributes={numberAttributes} value={amount.baseAttributeId} onChange={(v) => onChange({ ...amount, baseAttributeId: v })} />
             </div>
           )}
 
@@ -773,17 +812,10 @@
                   Flat-amount tiers
                 </label>
               </div>
-              {amount.rateType === 'percent' && (
-                <div className="field">
-                  <label>of</label>
-                  <select value={amount.baseAttributeId} onChange={(e) => onChange({ ...amount, baseAttributeId: e.target.value })}>
-                    <option value="" disabled>Choose Attribute...</option>
-                    {numberAttributes.map((a) => (
-                      <option key={a.id} value={a.id}>{a.label}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
+              <div className="field">
+                <label>{amount.rateType === 'percent' ? 'of' : 'deducted from'}</label>
+                <AttributeSelect attributes={numberAttributes} value={amount.baseAttributeId} onChange={(v) => onChange({ ...amount, baseAttributeId: v })} />
+              </div>
               {amount.rows.map((row, i) => (
                 <div className="ladder-row" key={i}>
                   <input
@@ -855,12 +887,7 @@
           {amount.form === 'from_facts' && (
             <div className="field">
               <label>Attribute</label>
-              <select value={amount.attributeId} onChange={(e) => onChange({ ...amount, attributeId: e.target.value })}>
-                <option value="" disabled>Choose Attribute...</option>
-                {allAttributes.map((a) => (
-                  <option key={a.id} value={a.id}>{a.label}</option>
-                ))}
-              </select>
+              <AttributeSelect attributes={allAttributes} value={amount.attributeId} onChange={(v) => onChange({ ...amount, attributeId: v })} />
             </div>
           )}
         </div>
@@ -873,35 +900,73 @@
     // scenario (e.g. Company Dollar's floor differs by lease/sale/no-floor)
     // without a separate kind:adjust rule or branching logic inside the
     // amount expression itself — see rules.js's emptyBranch()/validateBranches().
-    function BranchEditor({ branch, index, isLast, attributes, numberAttributes, onChange, onRemove, onMoveUp, onMoveDown, canRemove }) {
+    function BranchEditor({
+      branch, index, isLast, attributes, attributesById, numberAttributes,
+      onChange, onRemove, onMoveUp, onMoveDown, canRemove, expanded, onToggleExpanded,
+    }) {
+      const isCatchAll = !branch.when.children || branch.when.children.length === 0;
+      const summary = isCatchAll
+        ? 'Otherwise'
+        : describeConditionGroup(branch.when, attributesById);
+
       return (
-        <div className="branch-editor">
-          <div className="branch-header">
-            <strong>Branch {index + 1}{isLast ? ' (catch-all — leave "When" empty to match everything else)' : ''}</strong>
-            <div className="branch-actions">
-              <button type="button" className="btn-link" onClick={onMoveUp} disabled={index === 0}>Move up</button>
-              <button type="button" className="btn-link" onClick={onMoveDown} disabled={isLast}>Move down</button>
-              <button type="button" className="btn-link btn-danger" onClick={onRemove} disabled={!canRemove}>Remove branch</button>
+        <div className={'scenario-card' + (isCatchAll ? ' scenario-catchall' : '')}>
+          <button type="button" className="scenario-header" onClick={onToggleExpanded}>
+            <span className="scenario-toggle-icon">{expanded ? '▾' : '▸'}</span>
+            <span className="scenario-number">{isLast && isCatchAll ? 'Otherwise' : `Scenario ${index + 1}`}</span>
+            <span className="scenario-summary">
+              {isCatchAll && !isLast ? '(no conditions)' : summary} <span className="scenario-arrow">→</span> {describeAmount(branch.amount, attributesById)}
+            </span>
+          </button>
+
+          {expanded && (
+            <div className="scenario-body">
+              <div className="scenario-actions">
+                <button type="button" className="icon-btn" title="Move up" onClick={onMoveUp} disabled={index === 0}>▲</button>
+                <button type="button" className="icon-btn" title="Move down" onClick={onMoveDown} disabled={isLast}>▼</button>
+                <button type="button" className="icon-btn icon-btn-danger" title="Remove scenario" onClick={onRemove} disabled={!canRemove}>✕</button>
+              </div>
+
+              {isLast && (
+                <p className="form-section-hint">
+                  Leave "When" empty so this scenario catches every transaction that didn't match one above it.
+                </p>
+              )}
+
+              <div className="field">
+                <label>When</label>
+                <ConditionGroupEditor group={branch.when} attributes={attributes} onChange={(when) => onChange({ ...branch, when })} depth={0} />
+              </div>
+              <div className="field">
+                <label>Amount</label>
+                <AmountExpressionEditor
+                  amount={branch.amount}
+                  numberAttributes={numberAttributes}
+                  allAttributes={attributes}
+                  onChange={(amount) => onChange({ ...branch, amount })}
+                />
+              </div>
             </div>
-          </div>
-          <div className="field">
-            <label>When</label>
-            <ConditionGroupEditor group={branch.when} attributes={attributes} onChange={(when) => onChange({ ...branch, when })} depth={0} />
-          </div>
-          <div className="field">
-            <label>Amount</label>
-            <AmountExpressionEditor
-              amount={branch.amount}
-              numberAttributes={numberAttributes}
-              allAttributes={attributes}
-              onChange={(amount) => onChange({ ...branch, amount })}
-            />
-          </div>
+          )}
         </div>
       );
     }
 
     function BranchesEditor({ branches, attributes, numberAttributes, onChange }) {
+      // Purely visual — which scenario cards are expanded. Defaults to
+      // "all expanded" (same as before this change) so nothing is hidden
+      // by surprise; collapsing is an option, not the default.
+      const [collapsed, setCollapsed] = useState(() => new Set());
+      const attributesById = Object.fromEntries(attributes.map((a) => [a.id, a]));
+
+      function toggleExpanded(i) {
+        setCollapsed((prev) => {
+          const next = new Set(prev);
+          if (next.has(i)) next.delete(i); else next.add(i);
+          return next;
+        });
+      }
+
       function updateBranch(i, updated) {
         const next = branches.slice();
         next[i] = updated;
@@ -929,7 +994,10 @@
               isLast={i === branches.length - 1}
               canRemove={branches.length > 1}
               attributes={attributes}
+              attributesById={attributesById}
               numberAttributes={numberAttributes}
+              expanded={!collapsed.has(i)}
+              onToggleExpanded={() => toggleExpanded(i)}
               onChange={(updated) => updateBranch(i, updated)}
               onRemove={() => removeBranch(i)}
               onMoveUp={() => moveBranch(i, -1)}
@@ -937,7 +1005,7 @@
             />
           ))}
           <button type="button" className="btn-secondary" onClick={() => onChange([...branches, emptyBranch()])}>
-            + Branch
+            + Scenario
           </button>
         </div>
       );
@@ -964,15 +1032,17 @@
     function describeAmount(amount, attributesById) {
       switch (amount.form) {
         case 'flat':
-          return `$${centsToDollars(amount.cents)}`;
+          return `$${centsToDollars(amount.cents)} (from ${attributesById[amount.baseAttributeId]?.label || '?'})`;
         case 'rate':
           return `${amount.pct}% of ${attributesById[amount.baseAttributeId]?.label || '?'}`;
         case 'max':
           return `max(${describeAmount(amount.a, attributesById)}, ${describeAmount(amount.b, attributesById)})`;
         case 'min':
           return `min(${describeAmount(amount.a, attributesById)}, ${describeAmount(amount.b, attributesById)})`;
-        case 'ladder':
-          return `ladder on ${TRACKER_LABELS[amount.tracker]}${amount.rateType === 'percent' ? ' of ' + (attributesById[amount.baseAttributeId]?.label || '?') : ' (flat tiers)'}`;
+        case 'ladder': {
+          const base = attributesById[amount.baseAttributeId]?.label || '?';
+          return `ladder on ${TRACKER_LABELS[amount.tracker]} ${amount.rateType === 'percent' ? `of ${base}` : `(flat tiers, from ${base})`}`;
+        }
         case 'capped_by':
           return `${describeAmount(amount.amount, attributesById)}, capped by ${TRACKER_LABELS[amount.tracker]}`;
         case 'from_facts':
@@ -988,6 +1058,37 @@
         .join('  |  ');
     }
 
+    // Read-only, line-per-scenario rendering of describeBranches()'s data —
+    // used in the rule list/history tables so multi-branch rules (e.g.
+    // Company Dollar's 3 scenarios) read as a short list, not one long
+    // run-on string.
+    function BranchesSummaryList({ branches, attributesById }) {
+      return (
+        <ol className="branches-summary-list">
+          {branches.map((b, i) => {
+            const isLast = i === branches.length - 1;
+            const isCatchAll = !b.when.children || b.when.children.length === 0;
+            return (
+              <li key={i}>
+                {isCatchAll ? <em>{isLast ? 'Otherwise' : 'Every transaction'}</em> : describeConditionGroup(b.when, attributesById)}
+                {' → '}
+                {describeAmount(b.amount, attributesById)}
+              </li>
+            );
+          })}
+        </ol>
+      );
+    }
+
+    function describeApplies(rule, attributesById) {
+      const appliesLabel = APPLIES_LABELS[rule.applies] || APPLIES_LABELS.per_transaction;
+      if (!APPLIES_ALLOWING_SPLIT.includes(rule.applies)) return appliesLabel;
+      if (rule.split === 'by_percent_attribute') {
+        return `${appliesLabel}, split by ${attributesById[rule.splitAttributeId]?.label || '?'}`;
+      }
+      return `${appliesLabel}, ${SPLIT_LABELS.none}`;
+    }
+
     function emptyRuleForm() {
       return {
         id: '',
@@ -997,6 +1098,10 @@
         conditions: emptyConditionGroup(),
         branches: [emptyBranch()],
         payee: 'roa',
+        applies: 'per_transaction',
+        split: 'none',
+        splitAttributeId: '',
+        contributesToTracker: 'none',
       };
     }
 
@@ -1009,12 +1114,63 @@
         conditions: rule.conditions,
         branches: rule.branches,
         payee: rule.payee,
+        applies: rule.applies || 'per_transaction',
+        split: rule.split || 'none',
+        splitAttributeId: rule.splitAttributeId || '',
+        contributesToTracker: rule.contributesToTracker || 'none',
       };
+    }
+
+    // Live, plain-English "what will this rule actually do" summary — pure
+    // presentation, built entirely from the existing describe*() helpers
+    // and the form's own state. No data/flow change; just always-visible
+    // feedback while authoring, instead of only seeing this after saving.
+    function RuleSummary({ form, attributesById }) {
+      const gate = describeConditionGroup(form.conditions, attributesById);
+      const payeeLabel = PAYEE_LABELS[form.payee] || '(choose a payee)';
+      const appliesLabel = describeApplies(form, attributesById);
+
+      return (
+        <div className="rule-summary">
+          <div className="rule-summary-title">What this Rule does</div>
+          <div className="rule-summary-line">
+            <strong>Applies when:</strong> {gate}
+          </div>
+          <div className="rule-summary-line">
+            <strong>Pays:</strong>
+            <ol className="rule-summary-branches">
+              {form.branches.map((b, i) => {
+                const isCatchAll = !b.when.children || b.when.children.length === 0;
+                return (
+                  <li key={i}>
+                    {isCatchAll ? <em>Otherwise</em> : describeConditionGroup(b.when, attributesById)}
+                    {' → '}
+                    {describeAmount(b.amount, attributesById)}
+                  </li>
+                );
+              })}
+            </ol>
+          </div>
+          <div className="rule-summary-line">
+            <strong>Paid to:</strong> {payeeLabel} · <strong>Runs:</strong> {appliesLabel}
+            {form.contributesToTracker !== 'none' && (
+              <> · <strong>Feeds tracker:</strong> {CONTRIBUTES_TO_TRACKER_LABELS[form.contributesToTracker]}</>
+            )}
+            {form.waivable && <> · <strong>Waivable</strong></>}
+          </div>
+        </div>
+      );
     }
 
     function RuleForm({ initial, editingId, existingRules, attributes, onSave, onCancel }) {
       const [form, setForm] = useState(initial || emptyRuleForm());
       const [errors, setErrors] = useState({});
+      // Advanced settings auto-expand if they're already non-default (e.g.
+      // editing a Rule that already uses per_agent_side) so nothing is
+      // hidden by surprise — otherwise stay collapsed for a plain rule.
+      const [showAdvanced, setShowAdvanced] = useState(
+        (initial && (initial.applies !== 'per_transaction' || initial.contributesToTracker !== 'none' || initial.waivable)) || false
+      );
 
       function update(patch) {
         setForm((f) => ({ ...f, ...patch }));
@@ -1036,30 +1192,39 @@
         onSave(buildRule(form));
       }
 
+      const advancedIsCustomized = form.applies !== 'per_transaction' || form.contributesToTracker !== 'none' || form.waivable;
+
       return (
-        <form className="attribute-form" onSubmit={handleSubmit}>
+        <form className="attribute-form rule-form" onSubmit={handleSubmit}>
           <h2>{editingId ? 'Edit Rule' : 'New Rule'}</h2>
 
-          <div className="field">
-            <label>Label</label>
-            <input type="text" value={form.label} onChange={(e) => handleLabelChange(e.target.value)} placeholder="e.g. Risk Fee" />
-            {errors.label && <div className="field-error">{errors.label}</div>}
+          <RuleSummary form={form} attributesById={attributesById} />
+
+          <div className="form-section">
+            <div className="form-section-title">1. Identify this Rule</div>
+            <div className="field">
+              <label>Label</label>
+              <input type="text" value={form.label} onChange={(e) => handleLabelChange(e.target.value)} placeholder="e.g. Risk Fee" />
+              {errors.label && <div className="field-error">{errors.label}</div>}
+            </div>
+
+            <div className="field">
+              <label>Key</label>
+              <input type="text" value={form.id} onChange={(e) => update({ id: e.target.value, idTouched: true })} placeholder="e.g. risk_fee" />
+              {errors.id && <div className="field-error">{errors.id}</div>}
+            </div>
           </div>
 
-          <div className="field">
-            <label>Key</label>
-            <input type="text" value={form.id} onChange={(e) => update({ id: e.target.value, idTouched: true })} placeholder="e.g. risk_fee" />
-            {errors.id && <div className="field-error">{errors.id}</div>}
-          </div>
-
-          <div className="field">
-            <label>Conditions (does this Rule apply at all?)</label>
+          <div className="form-section">
+            <div className="form-section-title">2. When does this apply?</div>
+            <p className="form-section-hint">Leave empty to match every transaction.</p>
             <ConditionGroupEditor group={form.conditions} attributes={attributes} onChange={(conditions) => update({ conditions })} depth={0} />
             {errors.conditions && <div className="field-error">{errors.conditions}</div>}
           </div>
 
-          <div className="field">
-            <label>Branches (evaluated in order — first matching "When" wins; give the last branch an empty "When" as a catch-all)</label>
+          <div className="form-section">
+            <div className="form-section-title">3. How much, in each scenario?</div>
+            <p className="form-section-hint">Checked top to bottom — the first matching scenario is used. Keep one "Otherwise" scenario at the end so every transaction that reaches this Rule gets an amount.</p>
             <BranchesEditor
               branches={form.branches}
               attributes={attributes}
@@ -1069,21 +1234,87 @@
             {errors.branches && <div className="field-error">{errors.branches}</div>}
           </div>
 
-          <div className="field">
-            <label>Payee</label>
-            <select value={form.payee} onChange={(e) => update({ payee: e.target.value })}>
-              {PAYEE_OPTIONS.map((p) => (
-                <option key={p} value={p}>{PAYEE_LABELS[p]}</option>
-              ))}
-            </select>
-            {errors.payee && <div className="field-error">{errors.payee}</div>}
+          <div className="form-section">
+            <div className="form-section-title">4. Who gets paid?</div>
+            <div className="field">
+              <label>Payee</label>
+              <select value={form.payee} onChange={(e) => update({ payee: e.target.value })}>
+                {PAYEE_OPTIONS.map((p) => (
+                  <option key={p} value={p}>{PAYEE_LABELS[p]}</option>
+                ))}
+              </select>
+              {errors.payee && <div className="field-error">{errors.payee}</div>}
+            </div>
           </div>
 
-          <div className="field">
-            <label>
-              <input type="checkbox" checked={form.waivable} onChange={(e) => update({ waivable: e.target.checked })} />
-              {' '}Waivable (an authorized person may suppress this Rule for a specific transaction)
-            </label>
+          <div className="form-section">
+            <button type="button" className="advanced-toggle" onClick={() => setShowAdvanced((v) => !v)}>
+              {showAdvanced ? '▾' : '▸'} Advanced settings
+              {!showAdvanced && advancedIsCustomized && <span className="advanced-badge">customized</span>}
+            </button>
+
+            {showAdvanced && (
+              <div className="advanced-body">
+                <div className="field">
+                  <label>Applies (how many times does this Rule fire?)</label>
+                  <select
+                    value={form.applies}
+                    onChange={(e) => {
+                      const applies = e.target.value;
+                      update(APPLIES_ALLOWING_SPLIT.includes(applies) ? { applies } : { applies, split: 'none', splitAttributeId: '' });
+                    }}
+                  >
+                    {APPLIES_OPTIONS.map((a) => (
+                      <option key={a} value={a}>{APPLIES_LABELS[a]}</option>
+                    ))}
+                  </select>
+                  {errors.applies && <div className="field-error">{errors.applies}</div>}
+                </div>
+
+                {APPLIES_ALLOWING_SPLIT.includes(form.applies) && (
+                  <div className="field">
+                    <label>Split (how does the computed amount divide among the people who share it?)</label>
+                    <select
+                      value={form.split}
+                      onChange={(e) => {
+                        const split = e.target.value;
+                        update(split === 'none' ? { split, splitAttributeId: '' } : { split });
+                      }}
+                    >
+                      {SPLIT_OPTIONS.map((s) => (
+                        <option key={s} value={s}>{SPLIT_LABELS[s]}</option>
+                      ))}
+                    </select>
+                    {errors.split && <div className="field-error">{errors.split}</div>}
+
+                    {form.split === 'by_percent_attribute' && (
+                      <div className="field">
+                        <label>Split percentage Attribute (each participant's own share, e.g. 60 for 60%)</label>
+                        <AttributeSelect attributes={numberAttributes} value={form.splitAttributeId} onChange={(v) => update({ splitAttributeId: v })} />
+                        {errors.splitAttributeId && <div className="field-error">{errors.splitAttributeId}</div>}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="field">
+                  <label>Contributes to tracker (optional — does this Rule's own payment feed a tracker?)</label>
+                  <select value={form.contributesToTracker} onChange={(e) => update({ contributesToTracker: e.target.value })}>
+                    {CONTRIBUTES_TO_TRACKER_OPTIONS.map((t) => (
+                      <option key={t} value={t}>{CONTRIBUTES_TO_TRACKER_LABELS[t]}</option>
+                    ))}
+                  </select>
+                  {errors.contributesToTracker && <div className="field-error">{errors.contributesToTracker}</div>}
+                </div>
+
+                <div className="field">
+                  <label>
+                    <input type="checkbox" checked={form.waivable} onChange={(e) => update({ waivable: e.target.checked })} />
+                    {' '}Waivable (an authorized person may suppress this Rule for a specific transaction)
+                  </label>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="form-actions">
@@ -1100,8 +1331,10 @@
           <td>{rule.label} <span className="version-tag">v{rule.version}</span></td>
           <td><code>{rule.id}</code></td>
           <td>{describeConditionGroup(rule.conditions, attributesById)}</td>
-          <td>{describeBranches(rule.branches, attributesById)}</td>
+          <td><BranchesSummaryList branches={rule.branches} attributesById={attributesById} /></td>
           <td>{PAYEE_LABELS[rule.payee]}</td>
+          <td>{describeApplies(rule, attributesById)}</td>
+          <td>{CONTRIBUTES_TO_TRACKER_LABELS[rule.contributesToTracker] || CONTRIBUTES_TO_TRACKER_LABELS.none}</td>
           <td>{rule.waivable ? 'Yes' : 'No'}</td>
           <td className="actions-cell">
             <button className="btn-link" onClick={() => onEdit(rule)}>Edit</button>
@@ -1125,6 +1358,8 @@
               <th>Conditions</th>
               <th>Branches</th>
               <th>Payee</th>
+              <th>Applies</th>
+              <th>Contributes to</th>
               <th>Waivable</th>
             </tr>
           </thead>
@@ -1135,8 +1370,10 @@
                 <td>{new Date(v.updatedAt).toLocaleString()}</td>
                 <td>{v.label}</td>
                 <td>{describeConditionGroup(v.conditions, attributesById)}</td>
-                <td>{describeBranches(v.branches, attributesById)}</td>
+                <td><BranchesSummaryList branches={v.branches} attributesById={attributesById} /></td>
                 <td>{PAYEE_LABELS[v.payee]}</td>
+                <td>{describeApplies(v, attributesById)}</td>
+                <td>{CONTRIBUTES_TO_TRACKER_LABELS[v.contributesToTracker] || CONTRIBUTES_TO_TRACKER_LABELS.none}</td>
                 <td>{v.waivable ? 'Yes' : 'No'}</td>
               </tr>
             ))}
@@ -1241,6 +1478,8 @@
                   <th>Conditions</th>
                   <th>Branches</th>
                   <th>Payee</th>
+                  <th>Applies</th>
+                  <th>Contributes to</th>
                   <th>Waivable</th>
                   <th>Actions</th>
                 </tr>
@@ -1258,7 +1497,7 @@
                     />
                     {expandedHistoryId === r.id && (
                       <tr className="history-row">
-                        <td colSpan="7">
+                        <td colSpan="9">
                           <RuleHistoryTable versions={ruleVersionsForId(allVersions, r.id)} attributesById={attributesById} />
                         </td>
                       </tr>
