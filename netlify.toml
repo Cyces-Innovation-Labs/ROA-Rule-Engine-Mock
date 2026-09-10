@@ -2,16 +2,21 @@
 #
 # This app's local dev path (`node server.js`) is a single Node http
 # server that serves static files AND persists /api/attributes,
-# /api/rules to JSON files on disk. Netlify has no equivalent
-# long-running process or writable disk, so on Netlify:
+# /api/rules, /api/transactions, /api/agents to JSON files on disk.
+# Netlify has no equivalent long-running process or writable disk, so on
+# Netlify:
 #   - static files are served directly by Netlify's CDN from the repo
 #     root (no build step — this app is buildless, see CLAUDE.md)
-#   - the two API routes are handled by Netlify Functions
-#     (netlify/functions/attributes.js, rules.js) backed by Netlify
-#     Blobs instead of fs.readFileSync/writeFileSync
-#   - the SPA path routes (/attributes, /rules) get the same
-#     serve-index.html fallback server.js's APP_ROUTES gives them
-#     locally, so a refresh/typed URL/bookmark on either tab still works
+#   - the four API routes are handled by Netlify Functions
+#     (netlify/functions/attributes.js, rules.js, transactions.js,
+#     agents.js) backed by Netlify Blobs instead of
+#     fs.readFileSync/writeFileSync
+#   - the SPA path routes (/attributes, /rules, /transactions, /agents,
+#     /calculations) get the same serve-index.html fallback server.js's
+#     APP_ROUTES gives them locally, so a refresh/typed URL/bookmark on
+#     any tab still works. /calculations has no API route of its own —
+#     it's a read-only viewer over calculationResults already stored on
+#     each transaction (see calculation.js/CLAUDE.md).
 
 [build]
   publish = "."
@@ -28,11 +33,36 @@
   status = 200
 
 [[redirects]]
+  from = "/api/transactions"
+  to = "/.netlify/functions/transactions"
+  status = 200
+
+[[redirects]]
+  from = "/api/agents"
+  to = "/.netlify/functions/agents"
+  status = 200
+
+[[redirects]]
   from = "/attributes"
   to = "/index.html"
   status = 200
 
 [[redirects]]
   from = "/rules"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/transactions"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/agents"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/calculations"
   to = "/index.html"
   status = 200

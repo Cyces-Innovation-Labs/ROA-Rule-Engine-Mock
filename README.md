@@ -25,11 +25,11 @@ persistence. See "How it's built" below for why.
 ## Deploying to Netlify
 
 `node server.js` doesn't run on Netlify (no long-running process, no
-writable disk), so the deploy swaps its two API routes for Netlify
-Functions backed by Netlify Blobs instead — see `netlify.toml` and
+writable disk), so the deploy swaps its API routes for Netlify Functions
+backed by Netlify Blobs instead — see `netlify.toml` and
 `netlify/functions/`, and CLAUDE.md's "Deployment (Netlify)" section for
 the full reasoning. Static files (`index.html`, `style.css`,
-`attributes.js`, `rules.js`) deploy unchanged.
+`attributes.js`, `rules.js`, `calculation.js`) deploy unchanged.
 
 ```
 npm install         # pulls in @netlify/blobs, the one deploy-only dependency
@@ -82,7 +82,7 @@ attributes-data.json Seed/current Attribute catalog data (also the Netlify Blobs
 rules-data.json      Seed/current Rule catalog data (also the Netlify Blobs seed)
 package.json         npm start -> node server.js; @netlify/blobs is deploy-only
 netlify.toml          Netlify build/redirect config (API routes -> Functions, SPA fallback)
-netlify/functions/    Netlify Functions: /api/attributes, /api/rules on Netlify Blobs
+netlify/functions/    Netlify Functions: /api/attributes, /api/rules, /api/transactions, /api/agents on Netlify Blobs
 CLAUDE.md            Full project context, domain model, and decision log
 ```
 

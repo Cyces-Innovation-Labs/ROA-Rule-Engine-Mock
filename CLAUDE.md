@@ -37,32 +37,33 @@ the user to start the server).
 `writeFileSync` against local disk. Netlify doesn't run that shape of
 thing — it's a static CDN plus short-lived serverless Functions with no
 persistent writable filesystem — so a plain "deploy as-is" would serve the
-static files fine but 404 every `/api/attributes` and `/api/rules` call.
+static files fine but 404 every `/api/*` call.
 
 Chosen fix: **Netlify Functions + Netlify Blobs**, not a second external
-host. Two Functions (`netlify/functions/attributes.js`, `rules.js`) mirror
-`server.js`'s `RESOURCES` entries one-for-one, sharing a
+host. Four Functions (`netlify/functions/attributes.js`, `rules.js`,
+`transactions.js`, `agents.js` — the last two added once those tabs
+existed) mirror `server.js`'s `RESOURCES` entries one-for-one, sharing a
 `GET`/`PUT`-JSON-array handler (`netlify/functions/_lib/jsonStore.js`)
 that swaps `fs.readFileSync`/`writeFileSync` for Netlify Blobs'
 `store.get`/`store.setJSON` — Blobs is Netlify's own key-value store,
 reachable from Functions with no extra config once deployed on Netlify.
 Unlike `attributes.js`/`rules.js` on the frontend (deliberately duplicated
-per-resource, see above), the two Functions share this helper — it's infra
+per-resource, see above), the Functions share this helper — it's infra
 plumbing, not domain logic, so there's no independent-evolution reason to
 fork it. Each Function bundles the matching `*-data.json` file as a seed:
 on a store's very first `GET` (empty store, fresh deploy) it's initialized
-from that seed rather than starting empty, so the 21 Attributes / 2 Rules
-already in the repo show up on Netlify too.
+from that seed rather than starting empty, so whatever's currently in the
+repo's data files shows up on Netlify too.
 
-`netlify.toml` does the routing: `/api/attributes` and `/api/rules`
-redirect (status 200, i.e. a rewrite) to the two Functions, and
-`/attributes`/`/rules` redirect to `/index.html` — the Netlify-side
-equivalent of `server.js`'s `APP_ROUTES` SPA fallback, same reasoning.
-Static files (`index.html`, `style.css`, `attributes.js`, `rules.js`) need
-no changes and no build step — Netlify serves the repo root directly per
-`netlify.toml`'s `publish = "."`. The frontend's `fetch('/api/attributes')`
-/`fetch('/api/rules')` calls are already relative paths, so they don't
-need to change either.
+`netlify.toml` does the routing: each `/api/*` route redirects (status
+200, i.e. a rewrite) to its matching Function, and each tab's path
+(`/attributes`, `/rules`, `/transactions`, `/agents`, `/calculations`)
+redirects to `/index.html` — the Netlify-side equivalent of `server.js`'s
+`APP_ROUTES` SPA fallback, same reasoning. Static files (`index.html`,
+`style.css`, `attributes.js`, `rules.js`, `calculation.js`) need no
+changes and no build step — Netlify serves the repo root directly per
+`netlify.toml`'s `publish = "."`. The frontend's `fetch()` calls already
+use relative paths, so they don't need to change either.
 
 `@netlify/blobs` is the one dependency this adds — `package.json` now has
 a `dependencies` block for the first time (was zero-deps before), but only
