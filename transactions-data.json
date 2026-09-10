@@ -1,0 +1,248 @@
+[
+  {
+    "id": "e6daafbb-f578-4c99-bd06-bfb17b8bc82e",
+    "sale_guid": "e6daafbb-f578-4c99-bd06-bfb17b8bc82e",
+    "listing_price": 255000,
+    "sale_price": 258000,
+    "property_address": "2015 S 46 Dr, Yuma, AZ 85364",
+    "deal_type": "Both Purchase & Listing",
+    "overall_gci": 12900,
+    "personal_deal": false,
+    "source": "SOI",
+    "portion": "standard",
+    "deal_subtype": "none",
+    "state": null,
+    "program": null,
+    "decision": null,
+    "direction": null,
+    "referral_agreement": null,
+    "calculationResults": {
+      "calculatedAt": "2026-09-10T17:17:41.496Z",
+      "lineItems": [
+        {
+          "ruleId": "company_dollar",
+          "ruleLabel": "Company Dollar",
+          "applies": "per_agent_side",
+          "payee": "roa",
+          "split": "none",
+          "contributesToTracker": "cap_accumulation",
+          "waivable": false,
+          "participant": {
+            "guid": "6933ad39-e886-4053-944b-eb33a5d06528",
+            "name": "Rose Melinda Munoz",
+            "side": "listing"
+          },
+          "branchIndex": 4,
+          "rawAmount": 0,
+          "amount": 0
+        },
+        {
+          "ruleId": "company_dollar",
+          "ruleLabel": "Company Dollar",
+          "applies": "per_agent_side",
+          "payee": "roa",
+          "split": "none",
+          "contributesToTracker": "cap_accumulation",
+          "waivable": false,
+          "participant": {
+            "guid": "6933ad39-e886-4053-944b-eb33a5d06528",
+            "name": "Rose Melinda Munoz",
+            "side": "sale"
+          },
+          "branchIndex": 4,
+          "rawAmount": 0,
+          "amount": 0
+        },
+        {
+          "ruleId": "company_dollar",
+          "ruleLabel": "Company Dollar",
+          "applies": "per_agent_side",
+          "payee": "roa",
+          "split": "none",
+          "contributesToTracker": "cap_accumulation",
+          "waivable": false,
+          "participant": {
+            "guid": "a12c6554-a21d-488c-91b0-7225bfe9c8da",
+            "name": "Anakaren Moore",
+            "side": "listing"
+          },
+          "branchIndex": 1,
+          "rawAmount": 580.5,
+          "amount": 580.5
+        },
+        {
+          "ruleId": "technology_fee",
+          "ruleLabel": "Technology Fee",
+          "applies": "per_distinct_agent",
+          "payee": "roa",
+          "split": "none",
+          "contributesToTracker": "tech_fee_bucket",
+          "waivable": true,
+          "participant": {
+            "guid": "a12c6554-a21d-488c-91b0-7225bfe9c8da",
+            "name": "Anakaren Moore"
+          },
+          "branchIndex": 1,
+          "rawAmount": 250,
+          "amount": 250
+        },
+        {
+          "ruleId": "capped_status_fee",
+          "ruleLabel": "Capped-Status Fee",
+          "applies": "per_agent_side",
+          "payee": "roa",
+          "split": "none",
+          "contributesToTracker": "post_cap_bucket",
+          "waivable": false,
+          "participant": {
+            "guid": "6933ad39-e886-4053-944b-eb33a5d06528",
+            "name": "Rose Melinda Munoz",
+            "side": "listing"
+          },
+          "branchIndex": 1,
+          "rawAmount": 250,
+          "amount": 250
+        },
+        {
+          "ruleId": "capped_status_fee",
+          "ruleLabel": "Capped-Status Fee",
+          "applies": "per_agent_side",
+          "payee": "roa",
+          "split": "none",
+          "contributesToTracker": "post_cap_bucket",
+          "waivable": false,
+          "participant": {
+            "guid": "6933ad39-e886-4053-944b-eb33a5d06528",
+            "name": "Rose Melinda Munoz",
+            "side": "sale"
+          },
+          "branchIndex": 1,
+          "rawAmount": 250,
+          "amount": 250
+        },
+        {
+          "ruleId": "risk_fee",
+          "ruleLabel": "Risk Fee",
+          "applies": "per_agent_side",
+          "payee": "roa",
+          "split": "by_percent_attribute",
+          "contributesToTracker": "none",
+          "waivable": false,
+          "participant": {
+            "guid": "6933ad39-e886-4053-944b-eb33a5d06528",
+            "name": "Rose Melinda Munoz",
+            "side": "listing"
+          },
+          "branchIndex": 0,
+          "rawAmount": 100,
+          "amount": 25
+        },
+        {
+          "ruleId": "risk_fee",
+          "ruleLabel": "Risk Fee",
+          "applies": "per_agent_side",
+          "payee": "roa",
+          "split": "by_percent_attribute",
+          "contributesToTracker": "none",
+          "waivable": false,
+          "participant": {
+            "guid": "6933ad39-e886-4053-944b-eb33a5d06528",
+            "name": "Rose Melinda Munoz",
+            "side": "sale"
+          },
+          "branchIndex": 0,
+          "rawAmount": 100,
+          "amount": 50
+        }
+      ],
+      "totalsByPayee": {
+        "roa": 1405.5
+      },
+      "grandTotal": 1405.5,
+      "skipped": [
+        {
+          "ruleId": "personal_deal_fee",
+          "ruleLabel": "Personal-Deal Fee"
+        },
+        {
+          "ruleId": "mentor_fee",
+          "ruleLabel": "Mentor Fee"
+        },
+        {
+          "ruleId": "mentorship_program_fee",
+          "ruleLabel": "Mentorship Program Fee"
+        },
+        {
+          "ruleId": "roa_leads_program",
+          "ruleLabel": "ROA Leads Program"
+        },
+        {
+          "ruleId": "kairos_program",
+          "ruleLabel": "Kairos Program"
+        },
+        {
+          "ruleId": "wa_workers_comp",
+          "ruleLabel": "WA Workers' Compensation (rate TBD — set annually from the WA L&I Rate Notice)"
+        },
+        {
+          "ruleId": "il_admin_fee",
+          "ruleLabel": "IL Admin Fee"
+        },
+        {
+          "ruleId": "delinquency_fee",
+          "ruleLabel": "Delinquency Fee"
+        },
+        {
+          "ruleId": "inbound_referral_fee",
+          "ruleLabel": "Inbound Referral Fee"
+        },
+        {
+          "ruleId": "outbound_referral_passthrough",
+          "ruleLabel": "Outbound Referral Pass-Through"
+        }
+      ],
+      "errors": []
+    },
+    "commission_splits": [
+      {
+        "type": "user",
+        "is_internal": true,
+        "brokerage": "ROA",
+        "is_referral": false,
+        "guid": "6933ad39-e886-4053-944b-eb33a5d06528",
+        "name": "Rose Melinda Munoz",
+        "email": "melinda.munoz.az@realtyofamerica.com",
+        "side": "listing",
+        "commission_percent": 1.5,
+        "commission_amount": 3870,
+        "side_percentage": 25
+      },
+      {
+        "type": "user",
+        "is_internal": true,
+        "brokerage": "ROA",
+        "is_referral": false,
+        "guid": "6933ad39-e886-4053-944b-eb33a5d06528",
+        "name": "Rose Melinda Munoz",
+        "email": "melinda.munoz.az@realtyofamerica.com",
+        "side": "sale",
+        "commission_percent": 2,
+        "commission_amount": 5160,
+        "side_percentage": 50
+      },
+      {
+        "type": "user",
+        "is_internal": true,
+        "brokerage": "ROA",
+        "is_referral": true,
+        "guid": "a12c6554-a21d-488c-91b0-7225bfe9c8da",
+        "name": "Anakaren Moore",
+        "email": "karen.moore.az@realtyofamerica.com",
+        "side": "listing",
+        "commission_percent": 1.5,
+        "commission_amount": 3870,
+        "side_percentage": 25
+      }
+    ]
+  }
+]

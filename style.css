@@ -167,6 +167,17 @@ body {
   color: var(--color-muted);
 }
 
+.note-flag {
+  display: inline-block;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: #8a6d1a;
+  cursor: help;
+}
+
 .radio-row {
   display: flex;
   gap: 20px;
@@ -266,9 +277,19 @@ body {
   font-weight: 400;
 }
 
-.history-row td {
+.history-row td,
+.branches-row td {
   background: #f7f8fa;
   padding: 10px 12px 14px 32px;
+}
+
+.branches-toggle {
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.scenario-header-static {
+  cursor: default;
 }
 
 .history-table {

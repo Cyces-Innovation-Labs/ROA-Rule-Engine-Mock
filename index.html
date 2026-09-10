@@ -17,6 +17,7 @@
   <!-- Plain scripts, loaded natively by the browser — fine to open via file://. -->
   <script src="attributes.js"></script>
   <script src="rules.js"></script>
+  <script src="calculation.js"></script>
 
   <!--
     The app itself is INLINE (not `src="app.js"`) on purpose: when Babel-in-browser
@@ -35,6 +36,7 @@
       enum: 'Enum',
       date: 'Date',
       boolean: 'Boolean',
+      text: 'Text',
     };
 
     function ChipInput({ values, onChange, placeholder }) {
@@ -95,6 +97,7 @@
         allowedValuesKind: 'static',
         staticValues: [],
         tableRefTable: TABLE_REF_TABLE_KEYS[0],
+        note: '',
       };
     }
 
@@ -112,6 +115,7 @@
         allowedValuesKind: source && source.type === 'table_ref' ? 'table_ref' : 'static',
         staticValues: source && source.type === 'static' ? source.values : [],
         tableRefTable: source && source.type === 'table_ref' ? source.table : TABLE_REF_TABLE_KEYS[0],
+        note: attr.note || '',
       };
     }
 
@@ -299,6 +303,16 @@
             </div>
           )}
 
+          <div className="field">
+            <label>Note (optional — e.g. a caveat that this isn't confirmed as available from the source system yet)</label>
+            <input
+              type="text"
+              value={form.note}
+              onChange={(e) => update({ note: e.target.value })}
+              placeholder="e.g. Not confirmed this comes from SkySlope"
+            />
+          </div>
+
           <div className="form-actions">
             <button type="submit" className="btn-primary">
               {editingId ? 'Save changes' : 'Add Attribute'}
@@ -328,6 +342,7 @@
           <td>{attribute.valueLabel}</td>
           <td><code>{attribute.resolver.path}</code></td>
           <td>{allowedValuesDisplay(attribute)}</td>
+          <td>{attribute.note && <span className="note-flag" title={attribute.note}>⚠ {attribute.note}</span>}</td>
           <td className="actions-cell">
             <button className="btn-link" onClick={() => onEdit(attribute)}>Edit</button>
             <button className="btn-link" onClick={() => onToggleHistory(attribute.id)}>
@@ -351,6 +366,7 @@
               <th>Value label</th>
               <th>Resolver path</th>
               <th>Allowed values</th>
+              <th>Note</th>
             </tr>
           </thead>
           <tbody>
@@ -363,6 +379,7 @@
                 <td>{v.valueLabel}</td>
                 <td><code>{v.resolver.path}</code></td>
                 <td>{allowedValuesDisplay(v)}</td>
+                <td>{v.note}</td>
               </tr>
             ))}
           </tbody>
@@ -466,6 +483,7 @@
                   <th>Value label</th>
                   <th>Resolver path</th>
                   <th>Allowed values</th>
+                  <th>Note</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -481,7 +499,7 @@
                     />
                     {expandedHistoryId === a.id && (
                       <tr className="history-row">
-                        <td colSpan="7">
+                        <td colSpan="8">
                           <HistoryTable versions={versionsForId(allVersions, a.id)} />
                         </td>
                       </tr>
@@ -867,12 +885,25 @@
           {amount.form === 'capped_by' && (
             <div className="capped-by-editor">
               <div className="field">
-                <label>Tracker (headroom)</label>
+                <label>Tracker</label>
                 <select value={amount.tracker} onChange={(e) => onChange({ ...amount, tracker: e.target.value })}>
                   {TRACKER_OPTIONS.map((t) => (
                     <option key={t} value={t}>{TRACKER_LABELS[t]}</option>
                   ))}
                 </select>
+              </div>
+              <div className="field">
+                <label>Current progress Attribute (whose value gets subtracted from the target to find remaining room)</label>
+                <AttributeSelect attributes={numberAttributes} value={amount.progressAttributeId} onChange={(v) => onChange({ ...amount, progressAttributeId: v })} />
+              </div>
+              <div className="field">
+                <label>Target ($) — the tracker's full amount (e.g. $750 for Tech Fee Bucket)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={amount.target}
+                  onChange={(e) => onChange({ ...amount, target: Number(e.target.value) })}
+                />
               </div>
               <label>Amount (before capping)</label>
               <AmountExpressionEditor
@@ -1043,8 +1074,10 @@
           const base = attributesById[amount.baseAttributeId]?.label || '?';
           return `ladder on ${TRACKER_LABELS[amount.tracker]} ${amount.rateType === 'percent' ? `of ${base}` : `(flat tiers, from ${base})`}`;
         }
-        case 'capped_by':
-          return `${describeAmount(amount.amount, attributesById)}, capped by ${TRACKER_LABELS[amount.tracker]}`;
+        case 'capped_by': {
+          const progressLabel = attributesById[amount.progressAttributeId]?.label || '?';
+          return `min(${describeAmount(amount.amount, attributesById)}, ${TRACKER_LABELS[amount.tracker]} target $${amount.target} − ${progressLabel})`;
+        }
         case 'from_facts':
           return `value of ${attributesById[amount.attributeId]?.label || '?'}`;
         default:
@@ -1077,6 +1110,44 @@
             );
           })}
         </ol>
+      );
+    }
+
+    // Compact one-line stand-in for the Branches column in the main table —
+    // a full <ol> per row (4-11 lines for rules like Company Dollar/
+    // Capped-Status Fee) made the list unreadable. Click to expand a proper
+    // read-only scenario-card view (see BranchesReadOnlyCards) instead.
+    function branchesCompactSummary(branches) {
+      const n = branches.length;
+      const last = branches[n - 1];
+      const hasCatchAll = last && (!last.when.children || last.when.children.length === 0);
+      if (n === 1) return hasCatchAll ? '1 scenario' : '1 scenario (conditional)';
+      return `${n} scenarios${hasCatchAll ? ', +otherwise' : ''}`;
+    }
+
+    // Read-only scenario cards for the expanded Branches row in the main
+    // table — same visual language as the editable BranchEditor cards, but
+    // flat (no collapse toggle, no actions) since they're just for reading.
+    function BranchesReadOnlyCards({ branches, attributesById }) {
+      return (
+        <div className="branches-editor">
+          {branches.map((b, i) => {
+            const isLast = i === branches.length - 1;
+            const isCatchAll = !b.when.children || b.when.children.length === 0;
+            return (
+              <div key={i} className={'scenario-card' + (isCatchAll ? ' scenario-catchall' : '')}>
+                <div className="scenario-header scenario-header-static">
+                  <span className="scenario-number">{isLast && isCatchAll ? 'Otherwise' : `Scenario ${i + 1}`}</span>
+                  <span className="scenario-summary">
+                    {isCatchAll && !isLast ? '(no conditions)' : describeConditionGroup(b.when, attributesById)}
+                    {' '}<span className="scenario-arrow">→</span>{' '}
+                    {describeAmount(b.amount, attributesById)}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       );
     }
 
@@ -1325,13 +1396,17 @@
       );
     }
 
-    function RuleRow({ rule, attributesById, onEdit, onDelete, onToggleHistory, historyExpanded }) {
+    function RuleRow({ rule, attributesById, onEdit, onDelete, onToggleHistory, historyExpanded, onToggleBranches, branchesExpanded }) {
       return (
         <tr>
           <td>{rule.label} <span className="version-tag">v{rule.version}</span></td>
           <td><code>{rule.id}</code></td>
           <td>{describeConditionGroup(rule.conditions, attributesById)}</td>
-          <td><BranchesSummaryList branches={rule.branches} attributesById={attributesById} /></td>
+          <td>
+            <button className="btn-link branches-toggle" onClick={() => onToggleBranches(rule.id)}>
+              {branchesExpanded ? '▾' : '▸'} {branchesCompactSummary(rule.branches)}
+            </button>
+          </td>
           <td>{PAYEE_LABELS[rule.payee]}</td>
           <td>{describeApplies(rule, attributesById)}</td>
           <td>{CONTRIBUTES_TO_TRACKER_LABELS[rule.contributesToTracker] || CONTRIBUTES_TO_TRACKER_LABELS.none}</td>
@@ -1388,6 +1463,7 @@
       const [showForm, setShowForm] = useState(false);
       const [editingRule, setEditingRule] = useState(null);
       const [expandedHistoryId, setExpandedHistoryId] = useState(null);
+      const [expandedBranchesId, setExpandedBranchesId] = useState(null);
 
       const rules = currentRules(allVersions);
       const attributesById = Object.fromEntries(attributes.map((a) => [a.id, a]));
@@ -1437,6 +1513,10 @@
 
       function handleToggleHistory(id) {
         setExpandedHistoryId((current) => (current === id ? null : id));
+      }
+
+      function handleToggleBranches(id) {
+        setExpandedBranchesId((current) => (current === id ? null : id));
       }
 
       function handleCancel() {
@@ -1494,7 +1574,16 @@
                       onDelete={handleDelete}
                       onToggleHistory={handleToggleHistory}
                       historyExpanded={expandedHistoryId === r.id}
+                      onToggleBranches={handleToggleBranches}
+                      branchesExpanded={expandedBranchesId === r.id}
                     />
+                    {expandedBranchesId === r.id && (
+                      <tr className="branches-row">
+                        <td colSpan="9">
+                          <BranchesReadOnlyCards branches={r.branches} attributesById={attributesById} />
+                        </td>
+                      </tr>
+                    )}
                     {expandedHistoryId === r.id && (
                       <tr className="history-row">
                         <td colSpan="9">
@@ -1511,11 +1600,656 @@
       );
     }
 
+    // --- Transaction / Agent data screens -------------------------------
+    // Unlike Attributes/Rules (authored SCHEMA, small fixed field sets),
+    // Transactions and Agents are DATA INSTANCES whose shape is driven
+    // entirely by the current Attribute catalog — one input per Attribute
+    // rooted at 'transaction'/'commission_split' (Transactions) or 'agent'
+    // (Agents). No versioning (these are facts, not authored rules), no
+    // validation beyond type — a missing value is explicitly `null`
+    // ("None"), never a guessed default.
+
+    function fieldFromPath(path) {
+      const dot = (path || '').indexOf('.');
+      return dot === -1 ? path : path.slice(dot + 1);
+    }
+
+    function attributesForRoot(attributes, root) {
+      return attributes.filter((a) => a.resolver && a.resolver.kind === 'path' && splitResolverPath(a.resolver.path).root === root);
+    }
+
+    // Generic per-Attribute value editor for plain DATA (not a condition —
+    // no operator-driven shape, just "what is this fact's current value").
+    function AttributeValueInput({ attribute, value, onChange }) {
+      const isNone = value === null || value === undefined;
+
+      if (attribute.type === 'boolean') {
+        return (
+          <select value={isNone ? '' : String(value)} onChange={(e) => onChange(e.target.value === '' ? null : e.target.value === 'true')}>
+            <option value="">None</option>
+            <option value="true">True</option>
+            <option value="false">False</option>
+          </select>
+        );
+      }
+      if (attribute.type === 'enum' && attribute.allowedValuesSource && attribute.allowedValuesSource.type === 'static') {
+        return (
+          <select value={isNone ? '' : value} onChange={(e) => onChange(e.target.value === '' ? null : e.target.value)}>
+            <option value="">None</option>
+            {attribute.allowedValuesSource.values.map((v) => (
+              <option key={v} value={v}>{v}</option>
+            ))}
+          </select>
+        );
+      }
+      if (attribute.type === 'number') {
+        return (
+          <input
+            type="number"
+            value={isNone ? '' : value}
+            placeholder="None"
+            onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))}
+          />
+        );
+      }
+      // text, or an enum with no static list (e.g. a table_ref with no real backing dataset yet)
+      return (
+        <input
+          type="text"
+          value={isNone ? '' : value}
+          placeholder="None"
+          onChange={(e) => onChange(e.target.value === '' ? null : e.target.value)}
+        />
+      );
+    }
+
+    async function loadTransactions() {
+      try {
+        const res = await fetch('/api/transactions');
+        if (!res.ok) throw new Error(`Server responded ${res.status}`);
+        const parsed = await res.json();
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (e) {
+        console.error('Failed to load transactions from the server', e);
+        return [];
+      }
+    }
+    async function saveTransactions(transactions) {
+      const res = await fetch('/api/transactions', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(transactions),
+      });
+      if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.error || `Server responded ${res.status}`); }
+    }
+    async function loadAgents() {
+      try {
+        const res = await fetch('/api/agents');
+        if (!res.ok) throw new Error(`Server responded ${res.status}`);
+        const parsed = await res.json();
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (e) {
+        console.error('Failed to load agents from the server', e);
+        return [];
+      }
+    }
+    async function saveAgents(agents) {
+      const res = await fetch('/api/agents', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(agents),
+      });
+      if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.error || `Server responded ${res.status}`); }
+    }
+
+    function emptySplit(splitAttrs) {
+      const s = {};
+      for (const a of splitAttrs) s[fieldFromPath(a.resolver.path)] = null;
+      return s;
+    }
+
+    function emptyTransactionRecord(txAttrs) {
+      const t = { id: '', calculationResults: null, commission_splits: [] };
+      for (const a of txAttrs) t[fieldFromPath(a.resolver.path)] = null;
+      return t;
+    }
+
+    function TransactionForm({ initial, splitAttrs, txAttrs, onSave, onCancel }) {
+      const [form, setForm] = useState(initial || emptyTransactionRecord(txAttrs));
+
+      function update(patch) { setForm((f) => ({ ...f, ...patch })); }
+      function updateSplit(i, patch) {
+        const splits = form.commission_splits.slice();
+        splits[i] = { ...splits[i], ...patch };
+        update({ commission_splits: splits });
+      }
+      function addSplit() { update({ commission_splits: [...form.commission_splits, emptySplit(splitAttrs)] }); }
+      function removeSplit(i) { const splits = form.commission_splits.slice(); splits.splice(i, 1); update({ commission_splits: splits }); }
+
+      function handleSubmit(e) {
+        e.preventDefault();
+        const id = form.sale_guid || form.id || `txn_${Date.now()}`;
+        onSave({ ...form, id });
+      }
+
+      return (
+        <form className="attribute-form" onSubmit={handleSubmit}>
+          <h2>{initial ? 'Edit Transaction' : 'New Transaction'}</h2>
+
+          <div className="form-section">
+            <div className="form-section-title">Transaction fields</div>
+            {txAttrs.map((a) => {
+              const field = fieldFromPath(a.resolver.path);
+              return (
+                <div className="field" key={a.id}>
+                  <label>{a.label}</label>
+                  <AttributeValueInput attribute={a} value={form[field]} onChange={(v) => update({ [field]: v })} />
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="form-section">
+            <div className="form-section-title">Commission Splits</div>
+            {form.commission_splits.map((split, i) => (
+              <div className="scenario-card" key={i}>
+                <div className="scenario-body" style={{ paddingTop: 12 }}>
+                  <div className="scenario-actions">
+                    <button type="button" className="icon-btn icon-btn-danger" title="Remove split" onClick={() => removeSplit(i)}>✕</button>
+                  </div>
+                  {splitAttrs.map((a) => {
+                    const field = fieldFromPath(a.resolver.path);
+                    return (
+                      <div className="field" key={a.id}>
+                        <label>{a.label}</label>
+                        <AttributeValueInput attribute={a} value={split[field]} onChange={(v) => updateSplit(i, { [field]: v })} />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+            <button type="button" className="btn-secondary" onClick={addSplit}>+ Commission Split</button>
+          </div>
+
+          <div className="form-actions">
+            <button type="submit" className="btn-primary">{initial ? 'Save changes' : 'Add Transaction'}</button>
+            <button type="button" className="btn-secondary" onClick={onCancel}>Cancel</button>
+          </div>
+        </form>
+      );
+    }
+
+    function TransactionsScreen() {
+      const [transactions, setTransactions] = useState([]);
+      const [attributes, setAttributes] = useState([]);
+      const [agents, setAgents] = useState([]);
+      const [rules, setRules] = useState([]);
+      const [showForm, setShowForm] = useState(false);
+      const [editing, setEditing] = useState(null);
+      const [expandedId, setExpandedId] = useState(null);
+      const [expandedCalcId, setExpandedCalcId] = useState(null);
+
+      const txAttrs = attributesForRoot(attributes, 'transaction');
+      const splitAttrs = attributesForRoot(attributes, 'commission_split');
+
+      useEffect(() => {
+        let cancelled = false;
+        Promise.all([loadTransactions(), loadAttributes(), loadAgents(), loadRules()]).then(([loadedTx, loadedAttrVersions, loadedAgents, loadedRuleVersions]) => {
+          if (!cancelled) {
+            setTransactions(loadedTx);
+            setAttributes(currentAttributes(loadedAttrVersions));
+            setAgents(loadedAgents);
+            setRules(loadedRuleVersions);
+          }
+        });
+        return () => { cancelled = true; };
+      }, []);
+
+      async function persist(next) {
+        const previous = transactions;
+        setTransactions(next);
+        try { await saveTransactions(next); }
+        catch (e) { setTransactions(previous); window.alert(`Failed to save: ${e.message}\n\nIs the local server running? (node server.js)`); }
+      }
+
+      function handleRunCalculation(t) {
+        const attributesById = Object.fromEntries(attributes.map((a) => [a.id, a]));
+        const results = runMockCalculation({ transaction: t, agents, rules, attributesById });
+        const next = transactions.map((x) => (x.id === t.id ? { ...x, calculationResults: results } : x));
+        persist(next);
+        setExpandedCalcId(t.id); // show the fresh results immediately, no navigation/refresh needed
+      }
+
+      function handleSave(record) {
+        const exists = transactions.some((t) => t.id === record.id);
+        const next = exists ? transactions.map((t) => (t.id === record.id ? record : t)) : [...transactions, record];
+        persist(next);
+        setShowForm(false); setEditing(null);
+      }
+      function handleEdit(t) { setEditing(t); setShowForm(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+      function handleDelete(t) {
+        if (window.confirm(`Delete transaction "${t.property_address || t.id}"?`)) {
+          persist(transactions.filter((x) => x.id !== t.id));
+          if (expandedId === t.id) setExpandedId(null);
+        }
+      }
+      function handleCancel() { setShowForm(false); setEditing(null); }
+
+      return (
+        <div>
+          {!showForm && (
+            <div className="toolbar">
+              <button className="btn-primary" onClick={() => setShowForm(true)} disabled={attributes.length === 0}>+ New Transaction</button>
+              {attributes.length === 0 && <span className="hint-text">Create at least one Attribute first.</span>}
+            </div>
+          )}
+
+          {showForm && (
+            <TransactionForm
+              key={editing ? editing.id : 'new'}
+              initial={editing}
+              txAttrs={txAttrs}
+              splitAttrs={splitAttrs}
+              onSave={handleSave}
+              onCancel={handleCancel}
+            />
+          )}
+
+          {transactions.length === 0 ? (
+            <div className="empty-state">No Transactions yet. Click "+ New Transaction" to create one.</div>
+          ) : (
+            <table className="attribute-table">
+              <thead>
+                <tr>
+                  <th>Property</th>
+                  <th>Sale Price</th>
+                  <th>Overall GCI</th>
+                  <th>Deal Type</th>
+                  <th>Splits</th>
+                  <th>Calculation</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {transactions.map((t) => (
+                  <React.Fragment key={t.id}>
+                    <tr>
+                      <td>{t.property_address || <em>—</em>}</td>
+                      <td>{t.sale_price != null ? `$${t.sale_price}` : <em>None</em>}</td>
+                      <td>{t.overall_gci != null ? `$${t.overall_gci}` : <em>None</em>}</td>
+                      <td>{t.deal_type || <em>None</em>}</td>
+                      <td>
+                        <button className="btn-link" onClick={() => setExpandedId((c) => (c === t.id ? null : t.id))}>
+                          {expandedId === t.id ? '▾' : '▸'} {t.commission_splits.length} split(s)
+                        </button>
+                      </td>
+                      <td>
+                        {t.calculationResults ? (
+                          <button className="btn-link" onClick={() => setExpandedCalcId((c) => (c === t.id ? null : t.id))}>
+                            {expandedCalcId === t.id ? '▾' : '▸'} Last run {new Date(t.calculationResults.calculatedAt).toLocaleString()}
+                          </button>
+                        ) : <em>Not yet calculated</em>}
+                      </td>
+                      <td className="actions-cell">
+                        <button className="btn-link" onClick={() => handleRunCalculation(t)} disabled={rules.length === 0}>Run Mock Calculation</button>
+                        <button className="btn-link" onClick={() => handleEdit(t)}>Edit</button>
+                        <button className="btn-link btn-danger" onClick={() => handleDelete(t)}>Delete</button>
+                      </td>
+                    </tr>
+                    {expandedId === t.id && (
+                      <tr className="branches-row">
+                        <td colSpan="7">
+                          <table className="history-table">
+                            <thead>
+                              <tr>
+                                {splitAttrs.map((a) => <th key={a.id}>{a.label}</th>)}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {t.commission_splits.map((s, i) => (
+                                <tr key={i}>
+                                  {splitAttrs.map((a) => {
+                                    const field = fieldFromPath(a.resolver.path);
+                                    const v = s[field];
+                                    return <td key={a.id}>{v === null || v === undefined ? <em>None</em> : String(v)}</td>;
+                                  })}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </td>
+                      </tr>
+                    )}
+                    {expandedCalcId === t.id && (
+                      <tr className="branches-row">
+                        <td colSpan="7">
+                          <CalculationResultsPanel results={t.calculationResults} />
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      );
+    }
+
+    function emptyAgentRecord(agentAttrs) {
+      const a = { id: '', guid: '', name: '' };
+      for (const attr of agentAttrs) a[fieldFromPath(attr.resolver.path)] = null;
+      return a;
+    }
+
+    function AgentForm({ initial, agentAttrs, onSave, onCancel }) {
+      const [form, setForm] = useState(initial || emptyAgentRecord(agentAttrs));
+      function update(patch) { setForm((f) => ({ ...f, ...patch })); }
+      function handleSubmit(e) {
+        e.preventDefault();
+        const id = form.guid || form.id || `agent_${Date.now()}`;
+        onSave({ ...form, id });
+      }
+      return (
+        <form className="attribute-form" onSubmit={handleSubmit}>
+          <h2>{initial ? 'Edit Agent' : 'New Agent'}</h2>
+
+          <div className="form-section">
+            <div className="field"><label>GUID</label><input type="text" value={form.guid} onChange={(e) => update({ guid: e.target.value })} placeholder="Agent GUID" /></div>
+            <div className="field"><label>Name</label><input type="text" value={form.name} onChange={(e) => update({ name: e.target.value })} placeholder="Agent name (for display only — not a rule-condition Attribute)" /></div>
+          </div>
+
+          <div className="form-section">
+            <div className="form-section-title">Agent fields</div>
+            {agentAttrs.map((a) => {
+              const field = fieldFromPath(a.resolver.path);
+              return (
+                <div className="field" key={a.id}>
+                  <label>{a.label}</label>
+                  <AttributeValueInput attribute={a} value={form[field]} onChange={(v) => update({ [field]: v })} />
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="form-actions">
+            <button type="submit" className="btn-primary">{initial ? 'Save changes' : 'Add Agent'}</button>
+            <button type="button" className="btn-secondary" onClick={onCancel}>Cancel</button>
+          </div>
+        </form>
+      );
+    }
+
+    function AgentsScreen() {
+      const [agents, setAgents] = useState([]);
+      const [attributes, setAttributes] = useState([]);
+      const [showForm, setShowForm] = useState(false);
+      const [editing, setEditing] = useState(null);
+      const [expandedId, setExpandedId] = useState(null);
+
+      const agentAttrs = attributesForRoot(attributes, 'agent');
+
+      useEffect(() => {
+        let cancelled = false;
+        Promise.all([loadAgents(), loadAttributes()]).then(([loadedAgents, loadedAttrVersions]) => {
+          if (!cancelled) { setAgents(loadedAgents); setAttributes(currentAttributes(loadedAttrVersions)); }
+        });
+        return () => { cancelled = true; };
+      }, []);
+
+      async function persist(next) {
+        const previous = agents;
+        setAgents(next);
+        try { await saveAgents(next); }
+        catch (e) { setAgents(previous); window.alert(`Failed to save: ${e.message}\n\nIs the local server running? (node server.js)`); }
+      }
+
+      function handleSave(record) {
+        const exists = agents.some((a) => a.id === record.id);
+        const next = exists ? agents.map((a) => (a.id === record.id ? record : a)) : [...agents, record];
+        persist(next);
+        setShowForm(false); setEditing(null);
+      }
+      function handleEdit(a) { setEditing(a); setShowForm(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+      function handleDelete(a) {
+        if (window.confirm(`Delete agent "${a.name || a.id}"?`)) {
+          persist(agents.filter((x) => x.id !== a.id));
+          if (expandedId === a.id) setExpandedId(null);
+        }
+      }
+      function handleCancel() { setShowForm(false); setEditing(null); }
+
+      return (
+        <div>
+          {!showForm && (
+            <div className="toolbar">
+              <button className="btn-primary" onClick={() => setShowForm(true)} disabled={attributes.length === 0}>+ New Agent</button>
+              {attributes.length === 0 && <span className="hint-text">Create at least one Attribute first.</span>}
+            </div>
+          )}
+
+          {showForm && (
+            <AgentForm key={editing ? editing.id : 'new'} initial={editing} agentAttrs={agentAttrs} onSave={handleSave} onCancel={handleCancel} />
+          )}
+
+          {agents.length === 0 ? (
+            <div className="empty-state">No Agents yet. Click "+ New Agent" to create one.</div>
+          ) : (
+            <table className="attribute-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>GUID</th>
+                  <th>Fields</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {agents.map((a) => (
+                  <React.Fragment key={a.id}>
+                    <tr>
+                      <td>{a.name || <em>—</em>}</td>
+                      <td><code>{a.guid}</code></td>
+                      <td>
+                        <button className="btn-link" onClick={() => setExpandedId((c) => (c === a.id ? null : a.id))}>
+                          {expandedId === a.id ? '▾' : '▸'} View fields
+                        </button>
+                      </td>
+                      <td className="actions-cell">
+                        <button className="btn-link" onClick={() => handleEdit(a)}>Edit</button>
+                        <button className="btn-link btn-danger" onClick={() => handleDelete(a)}>Delete</button>
+                      </td>
+                    </tr>
+                    {expandedId === a.id && (
+                      <tr className="branches-row">
+                        <td colSpan="4">
+                          <table className="history-table">
+                            <tbody>
+                              {agentAttrs.map((attr) => {
+                                const field = fieldFromPath(attr.resolver.path);
+                                const v = a[field];
+                                return (
+                                  <tr key={attr.id}>
+                                    <td><strong>{attr.label}</strong></td>
+                                    <td>{v === null || v === undefined ? <em>None</em> : String(v)}</td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      );
+    }
+
+    // --- Calculations screen --------------------------------------------
+    // Read-only viewer over calculationResults already stored on each
+    // Transaction (the "Run Mock Calculation" action itself lives on the
+    // Transactions screen, per row — see TransactionsScreen). This tab is
+    // just a dedicated, focused place to inspect the line-item breakdown
+    // (rule, participant, payee, amount), skipped rules, and any firings
+    // that matched conditions but couldn't compute an amount — a "Run"
+    // button is included here too, for convenience, since it's the same
+    // one action either screen would call.
+    const PAYEE_LABEL = (p) => PAYEE_LABELS[p] || p;
+
+    function CalculationResultsPanel({ results }) {
+      if (!results) return <div className="empty-state">Not yet calculated.</div>;
+      return (
+        <div>
+          <p className="hint-text">Calculated {new Date(results.calculatedAt).toLocaleString()}</p>
+
+          <div className="form-section-title">Line items</div>
+          {results.lineItems.length === 0 ? (
+            <div className="empty-state">No Rule produced a line item for this transaction.</div>
+          ) : (
+            <table className="history-table">
+              <thead>
+                <tr>
+                  <th>Rule</th>
+                  <th>Applies</th>
+                  <th>Participant</th>
+                  <th>Payee</th>
+                  <th>Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {results.lineItems.map((li, i) => (
+                  <tr key={i}>
+                    <td>{li.ruleLabel}</td>
+                    <td>{APPLIES_LABELS[li.applies] || li.applies}</td>
+                    <td>{li.participant ? `${li.participant.name || li.participant.guid || ''}${li.participant.side ? ` (${li.participant.side})` : ''}` : <em>Transaction</em>}</td>
+                    <td>{PAYEE_LABEL(li.payee)}</td>
+                    <td>${li.amount.toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+
+          <div className="form-section-title">Totals by payee</div>
+          <table className="history-table">
+            <tbody>
+              {Object.entries(results.totalsByPayee).map(([payee, total]) => (
+                <tr key={payee}><td>{PAYEE_LABEL(payee)}</td><td>${total.toFixed(2)}</td></tr>
+              ))}
+              <tr><td><strong>Grand total</strong></td><td><strong>${results.grandTotal.toFixed(2)}</strong></td></tr>
+            </tbody>
+          </table>
+
+          {results.errors.length > 0 && (
+            <>
+              <div className="form-section-title">Errors — matched but couldn't compute</div>
+              <ul className="hint-text">
+                {results.errors.map((e, i) => (
+                  <li key={i}>
+                    <strong>{e.ruleLabel}</strong>{e.participant ? ` — ${e.participant.name || e.participant.guid || e.participant.side}` : ''}: {e.message}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+
+          {results.skipped.length > 0 && (
+            <>
+              <div className="form-section-title">Skipped (conditions never matched)</div>
+              <p className="hint-text">{results.skipped.map((s) => s.ruleLabel).join(', ')}</p>
+            </>
+          )}
+        </div>
+      );
+    }
+
+    function CalculationsScreen() {
+      const [transactions, setTransactions] = useState([]);
+      const [attributes, setAttributes] = useState([]);
+      const [agents, setAgents] = useState([]);
+      const [rules, setRules] = useState([]);
+      const [expandedId, setExpandedId] = useState(null);
+
+      useEffect(() => {
+        let cancelled = false;
+        Promise.all([loadTransactions(), loadAttributes(), loadAgents(), loadRules()]).then(([loadedTx, loadedAttrVersions, loadedAgents, loadedRuleVersions]) => {
+          if (!cancelled) {
+            setTransactions(loadedTx);
+            setAttributes(currentAttributes(loadedAttrVersions));
+            setAgents(loadedAgents);
+            setRules(loadedRuleVersions);
+          }
+        });
+        return () => { cancelled = true; };
+      }, []);
+
+      async function persist(next) {
+        const previous = transactions;
+        setTransactions(next);
+        try { await saveTransactions(next); }
+        catch (e) { setTransactions(previous); window.alert(`Failed to save: ${e.message}\n\nIs the local server running? (node server.js)`); }
+      }
+
+      function handleRunCalculation(t) {
+        const attributesById = Object.fromEntries(attributes.map((a) => [a.id, a]));
+        const results = runMockCalculation({ transaction: t, agents, rules, attributesById });
+        const next = transactions.map((x) => (x.id === t.id ? { ...x, calculationResults: results } : x));
+        persist(next);
+        setExpandedId(t.id);
+      }
+
+      return (
+        <div>
+          {transactions.length === 0 ? (
+            <div className="empty-state">No Transactions yet — create one on the Transactions tab first.</div>
+          ) : (
+            <table className="attribute-table">
+              <thead>
+                <tr>
+                  <th>Property</th>
+                  <th>Deal Type</th>
+                  <th>Last run</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {transactions.map((t) => (
+                  <React.Fragment key={t.id}>
+                    <tr>
+                      <td>{t.property_address || <em>—</em>}</td>
+                      <td>{t.deal_type || <em>None</em>}</td>
+                      <td>{t.calculationResults ? new Date(t.calculationResults.calculatedAt).toLocaleString() : <em>Never</em>}</td>
+                      <td className="actions-cell">
+                        <button className="btn-link" onClick={() => handleRunCalculation(t)} disabled={rules.length === 0}>Run Mock Calculation</button>
+                        {t.calculationResults && (
+                          <button className="btn-link" onClick={() => setExpandedId((c) => (c === t.id ? null : t.id))}>
+                            {expandedId === t.id ? 'Hide results' : 'View results'}
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                    {expandedId === t.id && (
+                      <tr className="branches-row">
+                        <td colSpan="4">
+                          <CalculationResultsPanel results={t.calculationResults} />
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      );
+    }
+
     // Path-based routing (no router library — see server.js's APP_ROUTES
     // for the matching server-side fallback that makes a refresh/typed-URL
     // on either path work instead of 404ing or landing on Attributes).
-    const ROUTE_FOR_TAB = { attributes: '/attributes', rules: '/rules' };
-    const TAB_FOR_ROUTE = { '/': 'attributes', '/attributes': 'attributes', '/rules': 'rules' };
+    const ROUTE_FOR_TAB = { attributes: '/attributes', rules: '/rules', transactions: '/transactions', agents: '/agents', calculations: '/calculations' };
+    const TAB_FOR_ROUTE = { '/': 'attributes', '/attributes': 'attributes', '/rules': 'rules', '/transactions': 'transactions', '/agents': 'agents', '/calculations': 'calculations' };
 
     function tabFromLocation() {
       return TAB_FOR_ROUTE[window.location.pathname] || 'attributes';
@@ -1551,8 +2285,21 @@
             <button className={'tab-btn' + (tab === 'rules' ? ' active' : '')} onClick={() => navigateToTab('rules')}>
               Rules
             </button>
+            <button className={'tab-btn' + (tab === 'transactions' ? ' active' : '')} onClick={() => navigateToTab('transactions')}>
+              Transactions
+            </button>
+            <button className={'tab-btn' + (tab === 'agents' ? ' active' : '')} onClick={() => navigateToTab('agents')}>
+              Agents
+            </button>
+            <button className={'tab-btn' + (tab === 'calculations' ? ' active' : '')} onClick={() => navigateToTab('calculations')}>
+              Calculations
+            </button>
           </div>
-          {tab === 'attributes' ? <AttributesScreen /> : <RulesScreen />}
+          {tab === 'attributes' && <AttributesScreen />}
+          {tab === 'rules' && <RulesScreen />}
+          {tab === 'transactions' && <TransactionsScreen />}
+          {tab === 'agents' && <AgentsScreen />}
+          {tab === 'calculations' && <CalculationsScreen />}
         </div>
       );
     }

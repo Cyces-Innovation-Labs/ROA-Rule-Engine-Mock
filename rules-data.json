@@ -1,7 +1,7 @@
 [
   {
-    "id": "risk_fee",
-    "label": "Risk Fee",
+    "id": "company_dollar",
+    "label": "Company Dollar",
     "waivable": false,
     "conditions": {
       "kind": "group",
@@ -9,59 +9,12 @@
       "children": [
         {
           "kind": "condition",
-          "attributeId": "source",
-          "operator": "neq",
-          "value": "inbound_referral"
-        },
-        {
-          "kind": "condition",
-          "attributeId": "portion",
-          "operator": "neq",
-          "value": "pass_through"
-        },
-        {
-          "kind": "condition",
-          "attributeId": "plan",
-          "operator": "neq",
-          "value": "lfro"
-        }
-      ]
-    },
-    "branches": [
-      {
-        "when": {
-          "kind": "group",
-          "op": "AND",
-          "children": []
-        },
-        "amount": {
-          "form": "flat",
-          "cents": 5000,
-          "baseAttributeId": "gci"
-        }
-      }
-    ],
-    "payee": "roa",
-    "version": 1,
-    "updatedAt": "2026-09-03T00:00:00.000Z",
-    "applies": "per_side",
-    "split": "by_percent_attribute",
-    "splitAttributeId": "side_percentage",
-    "contributesToTracker": "none"
-  },
-  {
-    "id": "standard_plan",
-    "label": "Standard Plan (Company Dollar + Floor)",
-    "waivable": false,
-    "conditions": {
-      "kind": "group",
-      "op": "AND",
-      "children": [
-        {
-          "kind": "condition",
-          "attributeId": "plan",
-          "operator": "eq",
-          "value": "standard"
+          "attributeId": "deal_type",
+          "operator": "not_in",
+          "value": [
+            "Referral",
+            "Other"
+          ]
         }
       ]
     },
@@ -73,9 +26,45 @@
           "children": [
             {
               "kind": "condition",
-              "attributeId": "primary_type",
+              "attributeId": "commission_plan",
               "operator": "eq",
-              "value": "lease"
+              "value": "lfro"
+            }
+          ]
+        },
+        "amount": {
+          "form": "ladder",
+          "tracker": "cap_accumulation",
+          "rateType": "percent",
+          "baseAttributeId": "commission_amount",
+          "rows": [
+            {
+              "upTo": null,
+              "value": 25
+            }
+          ]
+        }
+      },
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": [
+            {
+              "kind": "condition",
+              "attributeId": "commission_plan",
+              "operator": "eq",
+              "value": "standard"
+            },
+            {
+              "kind": "condition",
+              "attributeId": "deal_type",
+              "operator": "in",
+              "value": [
+                "Lease Landlord",
+                "Both Lease Tenant & Landlord",
+                "Lease Tenant"
+              ]
             },
             {
               "kind": "condition",
@@ -91,7 +80,7 @@
             "form": "ladder",
             "tracker": "cap_accumulation",
             "rateType": "percent",
-            "baseAttributeId": "gci",
+            "baseAttributeId": "commission_amount",
             "rows": [
               {
                 "upTo": 1400000,
@@ -106,7 +95,7 @@
           "b": {
             "form": "flat",
             "cents": 12500,
-            "baseAttributeId": "gci"
+            "baseAttributeId": "commission_amount"
           }
         }
       },
@@ -117,9 +106,19 @@
           "children": [
             {
               "kind": "condition",
-              "attributeId": "primary_type",
+              "attributeId": "commission_plan",
               "operator": "eq",
-              "value": "sale"
+              "value": "standard"
+            },
+            {
+              "kind": "condition",
+              "attributeId": "deal_type",
+              "operator": "in",
+              "value": [
+                "Both Purchase & Listing",
+                "Listing",
+                "Purchase"
+              ]
             },
             {
               "kind": "condition",
@@ -140,8 +139,8 @@
             {
               "kind": "condition",
               "attributeId": "personal_allowance",
-              "operator": "eq",
-              "value": "not_active"
+              "operator": "neq",
+              "value": "active"
             },
             {
               "kind": "condition",
@@ -157,7 +156,7 @@
             "form": "ladder",
             "tracker": "cap_accumulation",
             "rateType": "percent",
-            "baseAttributeId": "gci",
+            "baseAttributeId": "commission_amount",
             "rows": [
               {
                 "upTo": 1400000,
@@ -172,8 +171,358 @@
           "b": {
             "form": "flat",
             "cents": 50000,
-            "baseAttributeId": "gci"
+            "baseAttributeId": "commission_amount"
           }
+        }
+      },
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": [
+            {
+              "kind": "condition",
+              "attributeId": "commission_plan",
+              "operator": "eq",
+              "value": "standard"
+            }
+          ]
+        },
+        "amount": {
+          "form": "ladder",
+          "tracker": "cap_accumulation",
+          "rateType": "percent",
+          "baseAttributeId": "commission_amount",
+          "rows": [
+            {
+              "upTo": 1400000,
+              "value": 15
+            },
+            {
+              "upTo": null,
+              "value": 0
+            }
+          ]
+        }
+      },
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": [
+            {
+              "kind": "condition",
+              "attributeId": "commission_plan",
+              "operator": "eq",
+              "value": "half_cap"
+            },
+            {
+              "kind": "condition",
+              "attributeId": "deal_type",
+              "operator": "in",
+              "value": [
+                "Lease Landlord",
+                "Both Lease Tenant & Landlord",
+                "Lease Tenant"
+              ]
+            },
+            {
+              "kind": "condition",
+              "attributeId": "source",
+              "operator": "neq",
+              "value": "inbound_referral"
+            }
+          ]
+        },
+        "amount": {
+          "form": "max",
+          "a": {
+            "form": "ladder",
+            "tracker": "cap_accumulation",
+            "rateType": "percent",
+            "baseAttributeId": "commission_amount",
+            "rows": [
+              {
+                "upTo": 700000,
+                "value": 15
+              },
+              {
+                "upTo": null,
+                "value": 0
+              }
+            ]
+          },
+          "b": {
+            "form": "flat",
+            "cents": 12500,
+            "baseAttributeId": "commission_amount"
+          }
+        }
+      },
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": [
+            {
+              "kind": "condition",
+              "attributeId": "commission_plan",
+              "operator": "eq",
+              "value": "half_cap"
+            },
+            {
+              "kind": "condition",
+              "attributeId": "deal_type",
+              "operator": "in",
+              "value": [
+                "Both Purchase & Listing",
+                "Listing",
+                "Purchase"
+              ]
+            },
+            {
+              "kind": "condition",
+              "attributeId": "source",
+              "operator": "neq",
+              "value": "inbound_referral"
+            },
+            {
+              "kind": "condition",
+              "attributeId": "deal_subtype",
+              "operator": "not_in",
+              "value": [
+                "reo_hud",
+                "short_sale",
+                "bpo"
+              ]
+            },
+            {
+              "kind": "condition",
+              "attributeId": "personal_allowance",
+              "operator": "neq",
+              "value": "active"
+            },
+            {
+              "kind": "condition",
+              "attributeId": "cap_position",
+              "operator": "eq",
+              "value": "pre_cap"
+            }
+          ]
+        },
+        "amount": {
+          "form": "max",
+          "a": {
+            "form": "ladder",
+            "tracker": "cap_accumulation",
+            "rateType": "percent",
+            "baseAttributeId": "commission_amount",
+            "rows": [
+              {
+                "upTo": 700000,
+                "value": 15
+              },
+              {
+                "upTo": null,
+                "value": 0
+              }
+            ]
+          },
+          "b": {
+            "form": "flat",
+            "cents": 50000,
+            "baseAttributeId": "commission_amount"
+          }
+        }
+      },
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": [
+            {
+              "kind": "condition",
+              "attributeId": "commission_plan",
+              "operator": "eq",
+              "value": "half_cap"
+            }
+          ]
+        },
+        "amount": {
+          "form": "ladder",
+          "tracker": "cap_accumulation",
+          "rateType": "percent",
+          "baseAttributeId": "commission_amount",
+          "rows": [
+            {
+              "upTo": 700000,
+              "value": 15
+            },
+            {
+              "upTo": null,
+              "value": 0
+            }
+          ]
+        }
+      },
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": [
+            {
+              "kind": "condition",
+              "attributeId": "commission_plan",
+              "operator": "eq",
+              "value": "domestic_team"
+            },
+            {
+              "kind": "condition",
+              "attributeId": "deal_type",
+              "operator": "in",
+              "value": [
+                "Lease Landlord",
+                "Both Lease Tenant & Landlord",
+                "Lease Tenant"
+              ]
+            },
+            {
+              "kind": "condition",
+              "attributeId": "source",
+              "operator": "neq",
+              "value": "inbound_referral"
+            }
+          ]
+        },
+        "amount": {
+          "form": "max",
+          "a": {
+            "form": "ladder",
+            "tracker": "cap_accumulation",
+            "rateType": "percent",
+            "baseAttributeId": "commission_amount",
+            "rows": [
+              {
+                "upTo": 1400000,
+                "value": 15
+              },
+              {
+                "upTo": null,
+                "value": 0
+              }
+            ]
+          },
+          "b": {
+            "form": "flat",
+            "cents": 12500,
+            "baseAttributeId": "commission_amount"
+          }
+        }
+      },
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": [
+            {
+              "kind": "condition",
+              "attributeId": "commission_plan",
+              "operator": "eq",
+              "value": "domestic_team"
+            },
+            {
+              "kind": "condition",
+              "attributeId": "deal_type",
+              "operator": "in",
+              "value": [
+                "Both Purchase & Listing",
+                "Listing",
+                "Purchase"
+              ]
+            },
+            {
+              "kind": "condition",
+              "attributeId": "source",
+              "operator": "neq",
+              "value": "inbound_referral"
+            },
+            {
+              "kind": "condition",
+              "attributeId": "deal_subtype",
+              "operator": "not_in",
+              "value": [
+                "reo_hud",
+                "short_sale",
+                "bpo"
+              ]
+            },
+            {
+              "kind": "condition",
+              "attributeId": "personal_allowance",
+              "operator": "neq",
+              "value": "active"
+            },
+            {
+              "kind": "condition",
+              "attributeId": "cap_position",
+              "operator": "eq",
+              "value": "pre_cap"
+            }
+          ]
+        },
+        "amount": {
+          "form": "max",
+          "a": {
+            "form": "ladder",
+            "tracker": "cap_accumulation",
+            "rateType": "percent",
+            "baseAttributeId": "commission_amount",
+            "rows": [
+              {
+                "upTo": 1400000,
+                "value": 15
+              },
+              {
+                "upTo": null,
+                "value": 0
+              }
+            ]
+          },
+          "b": {
+            "form": "flat",
+            "cents": 50000,
+            "baseAttributeId": "commission_amount"
+          }
+        }
+      },
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": [
+            {
+              "kind": "condition",
+              "attributeId": "commission_plan",
+              "operator": "eq",
+              "value": "domestic_team"
+            }
+          ]
+        },
+        "amount": {
+          "form": "ladder",
+          "tracker": "cap_accumulation",
+          "rateType": "percent",
+          "baseAttributeId": "commission_amount",
+          "rows": [
+            {
+              "upTo": 1400000,
+              "value": 15
+            },
+            {
+              "upTo": null,
+              "value": 0
+            }
+          ]
         }
       },
       {
@@ -186,7 +535,7 @@
           "form": "ladder",
           "tracker": "cap_accumulation",
           "rateType": "percent",
-          "baseAttributeId": "gci",
+          "baseAttributeId": "commission_amount",
           "rows": [
             {
               "upTo": 1400000,
@@ -201,16 +550,16 @@
       }
     ],
     "payee": "roa",
-    "version": 2,
-    "updatedAt": "2026-09-03T00:00:00.000Z",
-    "applies": "per_transaction",
+    "version": 1,
+    "updatedAt": "2026-09-10T00:00:00.000Z",
+    "applies": "per_agent_side",
     "split": "none",
     "splitAttributeId": "",
     "contributesToTracker": "cap_accumulation"
   },
   {
-    "id": "team_account_cut",
-    "label": "Team Account Cut (Standard Team)",
+    "id": "company_dollar",
+    "label": "Company Dollar",
     "waivable": false,
     "conditions": {
       "kind": "group",
@@ -218,9 +567,12 @@
       "children": [
         {
           "kind": "condition",
-          "attributeId": "plan",
-          "operator": "eq",
-          "value": "standard"
+          "attributeId": "deal_type",
+          "operator": "not_in",
+          "value": [
+            "Referral",
+            "Other"
+          ]
         }
       ]
     },
@@ -229,189 +581,569 @@
         "when": {
           "kind": "group",
           "op": "AND",
-          "children": []
+          "children": [
+            {
+              "kind": "condition",
+              "attributeId": "commission_plan",
+              "operator": "eq",
+              "value": "standard"
+            },
+            {
+              "kind": "condition",
+              "attributeId": "deal_type",
+              "operator": "in",
+              "value": [
+                "Lease Landlord",
+                "Both Lease Tenant & Landlord",
+                "Lease Tenant"
+              ]
+            },
+            {
+              "kind": "condition",
+              "attributeId": "source",
+              "operator": "neq",
+              "value": "inbound_referral"
+            }
+          ]
         },
         "amount": {
-          "form": "rate",
-          "pct": 10,
-          "baseAttributeId": "gci"
+          "form": "max",
+          "a": {
+            "form": "ladder",
+            "tracker": "cap_accumulation",
+            "rateType": "percent",
+            "baseAttributeId": "commission_amount",
+            "rows": [
+              {
+                "upTo": 1400000,
+                "value": 15
+              },
+              {
+                "upTo": null,
+                "value": 0
+              }
+            ]
+          },
+          "b": {
+            "form": "flat",
+            "cents": 12500,
+            "baseAttributeId": "commission_amount"
+          }
         }
-      }
-    ],
-    "payee": "team",
-    "version": 1,
-    "updatedAt": "2026-09-03T00:00:00.000Z",
-    "applies": "per_transaction",
-    "split": "none",
-    "splitAttributeId": "",
-    "contributesToTracker": "none"
-  },
-  {
-    "id": "team_account_cut",
-    "label": "Team Account Cut (Standard Team)",
-    "waivable": false,
-    "conditions": {
-      "kind": "group",
-      "op": "AND",
-      "children": [
-        {
-          "kind": "condition",
-          "attributeId": "team",
-          "operator": "eq",
-          "value": "Standard"
-        }
-      ]
-    },
-    "branches": [
+      },
       {
         "when": {
           "kind": "group",
           "op": "AND",
-          "children": []
+          "children": [
+            {
+              "kind": "condition",
+              "attributeId": "commission_plan",
+              "operator": "eq",
+              "value": "standard"
+            },
+            {
+              "kind": "condition",
+              "attributeId": "deal_type",
+              "operator": "in",
+              "value": [
+                "Both Purchase & Listing",
+                "Listing",
+                "Purchase"
+              ]
+            },
+            {
+              "kind": "condition",
+              "attributeId": "source",
+              "operator": "neq",
+              "value": "inbound_referral"
+            },
+            {
+              "kind": "condition",
+              "attributeId": "deal_subtype",
+              "operator": "not_in",
+              "value": [
+                "reo_hud",
+                "short_sale",
+                "bpo"
+              ]
+            },
+            {
+              "kind": "condition",
+              "attributeId": "personal_allowance",
+              "operator": "neq",
+              "value": "active"
+            },
+            {
+              "kind": "condition",
+              "attributeId": "cap_position",
+              "operator": "eq",
+              "value": "pre_cap"
+            }
+          ]
         },
         "amount": {
-          "form": "rate",
-          "pct": 10,
-          "baseAttributeId": "gci"
+          "form": "max",
+          "a": {
+            "form": "ladder",
+            "tracker": "cap_accumulation",
+            "rateType": "percent",
+            "baseAttributeId": "commission_amount",
+            "rows": [
+              {
+                "upTo": 1400000,
+                "value": 15
+              },
+              {
+                "upTo": null,
+                "value": 0
+              }
+            ]
+          },
+          "b": {
+            "form": "flat",
+            "cents": 50000,
+            "baseAttributeId": "commission_amount"
+          }
         }
-      }
-    ],
-    "payee": "team",
-    "version": 2,
-    "updatedAt": "2026-09-03T15:36:37.469Z",
-    "applies": "per_transaction",
-    "split": "none",
-    "splitAttributeId": "",
-    "contributesToTracker": "none"
-  },
-  {
-    "id": "inbound_referral_fee",
-    "label": "Inbound Referral Fee",
-    "waivable": false,
-    "conditions": {
-      "kind": "group",
-      "op": "AND",
-      "children": [
-        {
-          "kind": "condition",
-          "attributeId": "source",
-          "operator": "eq",
-          "value": "inbound_referral"
-        }
-      ]
-    },
-    "branches": [
+      },
       {
         "when": {
           "kind": "group",
           "op": "AND",
-          "children": []
+          "children": [
+            {
+              "kind": "condition",
+              "attributeId": "commission_plan",
+              "operator": "eq",
+              "value": "half_cap"
+            },
+            {
+              "kind": "condition",
+              "attributeId": "deal_type",
+              "operator": "in",
+              "value": [
+                "Lease Landlord",
+                "Both Lease Tenant & Landlord",
+                "Lease Tenant"
+              ]
+            },
+            {
+              "kind": "condition",
+              "attributeId": "source",
+              "operator": "neq",
+              "value": "inbound_referral"
+            }
+          ]
         },
         "amount": {
-          "form": "from_facts",
-          "attributeId": "referral_agreement"
+          "form": "max",
+          "a": {
+            "form": "ladder",
+            "tracker": "cap_accumulation",
+            "rateType": "percent",
+            "baseAttributeId": "commission_amount",
+            "rows": [
+              {
+                "upTo": 700000,
+                "value": 15
+              },
+              {
+                "upTo": null,
+                "value": 0
+              }
+            ]
+          },
+          "b": {
+            "form": "flat",
+            "cents": 12500,
+            "baseAttributeId": "commission_amount"
+          }
         }
-      }
-    ],
-    "payee": "external_brokerage",
-    "version": 1,
-    "updatedAt": "2026-09-03T16:00:00.000Z",
-    "applies": "per_transaction",
-    "split": "none",
-    "splitAttributeId": "",
-    "contributesToTracker": "none"
-  },
-  {
-    "id": "outbound_referral_passthrough",
-    "label": "Outbound Referral Pass-Through",
-    "waivable": false,
-    "conditions": {
-      "kind": "group",
-      "op": "AND",
-      "children": [
-        {
-          "kind": "condition",
-          "attributeId": "primary_type",
-          "operator": "eq",
-          "value": "referral_only"
-        },
-        {
-          "kind": "condition",
-          "attributeId": "direction",
-          "operator": "eq",
-          "value": "outbound"
-        }
-      ]
-    },
-    "branches": [
+      },
       {
         "when": {
           "kind": "group",
           "op": "AND",
-          "children": []
+          "children": [
+            {
+              "kind": "condition",
+              "attributeId": "commission_plan",
+              "operator": "eq",
+              "value": "half_cap"
+            },
+            {
+              "kind": "condition",
+              "attributeId": "deal_type",
+              "operator": "in",
+              "value": [
+                "Both Purchase & Listing",
+                "Listing",
+                "Purchase"
+              ]
+            },
+            {
+              "kind": "condition",
+              "attributeId": "source",
+              "operator": "neq",
+              "value": "inbound_referral"
+            },
+            {
+              "kind": "condition",
+              "attributeId": "deal_subtype",
+              "operator": "not_in",
+              "value": [
+                "reo_hud",
+                "short_sale",
+                "bpo"
+              ]
+            },
+            {
+              "kind": "condition",
+              "attributeId": "personal_allowance",
+              "operator": "neq",
+              "value": "active"
+            },
+            {
+              "kind": "condition",
+              "attributeId": "cap_position",
+              "operator": "eq",
+              "value": "pre_cap"
+            }
+          ]
         },
         "amount": {
-          "form": "from_facts",
-          "attributeId": "referral_agreement"
-        }
-      }
-    ],
-    "payee": "referring_agent",
-    "version": 1,
-    "updatedAt": "2026-09-03T16:00:00.000Z",
-    "applies": "per_transaction",
-    "split": "none",
-    "splitAttributeId": "",
-    "contributesToTracker": "none"
-  },
-  {
-    "id": "personal_deal_fee",
-    "label": "Personal-Deal Fee",
-    "waivable": false,
-    "conditions": {
-      "kind": "group",
-      "op": "AND",
-      "children": [
-        {
-          "kind": "condition",
-          "attributeId": "personal_deal",
-          "operator": "eq",
-          "value": true
-        },
-        {
-          "kind": "condition",
-          "attributeId": "personal_deals_this_year",
-          "operator": "lt",
-          "value": 2
-        }
-      ]
-    },
-    "branches": [
-      {
-        "when": {
-          "kind": "group",
-          "op": "AND",
-          "children": []
-        },
-        "amount": {
-          "form": "flat",
-          "cents": 85000,
-          "baseAttributeId": "gci"
+          "form": "max",
+          "a": {
+            "form": "ladder",
+            "tracker": "cap_accumulation",
+            "rateType": "percent",
+            "baseAttributeId": "commission_amount",
+            "rows": [
+              {
+                "upTo": 700000,
+                "value": 15
+              },
+              {
+                "upTo": null,
+                "value": 0
+              }
+            ]
+          },
+          "b": {
+            "form": "flat",
+            "cents": 50000,
+            "baseAttributeId": "commission_amount"
+          }
         }
       }
     ],
     "payee": "roa",
-    "version": 1,
-    "updatedAt": "2026-09-03T16:00:00.000Z",
-    "applies": "per_transaction",
+    "applies": "per_agent_side",
     "split": "none",
     "splitAttributeId": "",
-    "contributesToTracker": "none"
+    "contributesToTracker": "cap_accumulation",
+    "version": 2,
+    "updatedAt": "2026-09-10T11:03:19.460Z"
   },
   {
+    "id": "company_dollar",
+    "label": "Company Dollar",
+    "waivable": false,
+    "conditions": {
+      "kind": "group",
+      "op": "AND",
+      "children": [
+        {
+          "kind": "condition",
+          "attributeId": "deal_type",
+          "operator": "not_in",
+          "value": [
+            "Referral",
+            "Other"
+          ]
+        }
+      ]
+    },
+    "branches": [
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": [
+            {
+              "kind": "condition",
+              "attributeId": "commission_plan",
+              "operator": "eq",
+              "value": "standard"
+            },
+            {
+              "kind": "condition",
+              "attributeId": "deal_type",
+              "operator": "in",
+              "value": [
+                "Lease Landlord",
+                "Both Lease Tenant & Landlord",
+                "Lease Tenant"
+              ]
+            },
+            {
+              "kind": "condition",
+              "attributeId": "source",
+              "operator": "neq",
+              "value": "inbound_referral"
+            }
+          ]
+        },
+        "amount": {
+          "form": "max",
+          "a": {
+            "form": "ladder",
+            "tracker": "cap_accumulation",
+            "rateType": "percent",
+            "baseAttributeId": "commission_amount",
+            "rows": [
+              {
+                "upTo": 14000,
+                "value": 15
+              },
+              {
+                "upTo": null,
+                "value": 0
+              }
+            ]
+          },
+          "b": {
+            "form": "flat",
+            "cents": 125,
+            "baseAttributeId": "commission_amount"
+          }
+        }
+      },
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": [
+            {
+              "kind": "condition",
+              "attributeId": "commission_plan",
+              "operator": "eq",
+              "value": "standard"
+            },
+            {
+              "kind": "condition",
+              "attributeId": "deal_type",
+              "operator": "in",
+              "value": [
+                "Both Purchase & Listing",
+                "Listing",
+                "Purchase"
+              ]
+            },
+            {
+              "kind": "condition",
+              "attributeId": "source",
+              "operator": "neq",
+              "value": "inbound_referral"
+            },
+            {
+              "kind": "condition",
+              "attributeId": "deal_subtype",
+              "operator": "not_in",
+              "value": [
+                "reo_hud",
+                "short_sale",
+                "bpo"
+              ]
+            },
+            {
+              "kind": "condition",
+              "attributeId": "personal_allowance",
+              "operator": "neq",
+              "value": "active"
+            },
+            {
+              "kind": "condition",
+              "attributeId": "cap_position",
+              "operator": "eq",
+              "value": "pre_cap"
+            }
+          ]
+        },
+        "amount": {
+          "form": "max",
+          "a": {
+            "form": "ladder",
+            "tracker": "cap_accumulation",
+            "rateType": "percent",
+            "baseAttributeId": "commission_amount",
+            "rows": [
+              {
+                "upTo": 14000,
+                "value": 15
+              },
+              {
+                "upTo": null,
+                "value": 0
+              }
+            ]
+          },
+          "b": {
+            "form": "flat",
+            "cents": 500,
+            "baseAttributeId": "commission_amount"
+          }
+        }
+      },
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": [
+            {
+              "kind": "condition",
+              "attributeId": "commission_plan",
+              "operator": "eq",
+              "value": "half_cap"
+            },
+            {
+              "kind": "condition",
+              "attributeId": "deal_type",
+              "operator": "in",
+              "value": [
+                "Lease Landlord",
+                "Both Lease Tenant & Landlord",
+                "Lease Tenant"
+              ]
+            },
+            {
+              "kind": "condition",
+              "attributeId": "source",
+              "operator": "neq",
+              "value": "inbound_referral"
+            }
+          ]
+        },
+        "amount": {
+          "form": "max",
+          "a": {
+            "form": "ladder",
+            "tracker": "cap_accumulation",
+            "rateType": "percent",
+            "baseAttributeId": "commission_amount",
+            "rows": [
+              {
+                "upTo": 7000,
+                "value": 15
+              },
+              {
+                "upTo": null,
+                "value": 0
+              }
+            ]
+          },
+          "b": {
+            "form": "flat",
+            "cents": 125,
+            "baseAttributeId": "commission_amount"
+          }
+        }
+      },
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": [
+            {
+              "kind": "condition",
+              "attributeId": "commission_plan",
+              "operator": "eq",
+              "value": "half_cap"
+            },
+            {
+              "kind": "condition",
+              "attributeId": "deal_type",
+              "operator": "in",
+              "value": [
+                "Both Purchase & Listing",
+                "Listing",
+                "Purchase"
+              ]
+            },
+            {
+              "kind": "condition",
+              "attributeId": "source",
+              "operator": "neq",
+              "value": "inbound_referral"
+            },
+            {
+              "kind": "condition",
+              "attributeId": "deal_subtype",
+              "operator": "not_in",
+              "value": [
+                "reo_hud",
+                "short_sale",
+                "bpo"
+              ]
+            },
+            {
+              "kind": "condition",
+              "attributeId": "personal_allowance",
+              "operator": "neq",
+              "value": "active"
+            },
+            {
+              "kind": "condition",
+              "attributeId": "cap_position",
+              "operator": "eq",
+              "value": "pre_cap"
+            }
+          ]
+        },
+        "amount": {
+          "form": "max",
+          "a": {
+            "form": "ladder",
+            "tracker": "cap_accumulation",
+            "rateType": "percent",
+            "baseAttributeId": "commission_amount",
+            "rows": [
+              {
+                "upTo": 7000,
+                "value": 15
+              },
+              {
+                "upTo": null,
+                "value": 0
+              }
+            ]
+          },
+          "b": {
+            "form": "flat",
+            "cents": 500,
+            "baseAttributeId": "commission_amount"
+          }
+        }
+      }
+    ],
+    "payee": "roa",
+    "applies": "per_agent_side",
+    "split": "none",
+    "splitAttributeId": "",
+    "contributesToTracker": "cap_accumulation",
+    "version": 3,
+    "updatedAt": "2026-09-10T11:08:35.852Z"
+  },
+  {
+    "waivable": true,
+    "version": 1,
+    "updatedAt": "2026-09-10T00:00:00.000Z",
+    "split": "none",
+    "splitAttributeId": "",
+    "contributesToTracker": "tech_fee_bucket",
     "id": "technology_fee",
     "label": "Technology Fee",
-    "waivable": true,
     "conditions": {
       "kind": "group",
       "op": "AND",
@@ -425,7 +1157,7 @@
           "children": [
             {
               "kind": "condition",
-              "attributeId": "gci",
+              "attributeId": "overall_gci",
               "operator": "lt",
               "value": 100000
             }
@@ -433,12 +1165,12 @@
         },
         "amount": {
           "form": "capped_by",
-          "tracker": "tech_fee_bucket",
           "amount": {
             "form": "flat",
             "cents": 12500,
-            "baseAttributeId": "gci"
-          }
+            "baseAttributeId": "commission_amount"
+          },
+          "tracker": "tech_fee_bucket"
         }
       },
       {
@@ -449,65 +1181,27 @@
         },
         "amount": {
           "form": "capped_by",
-          "tracker": "tech_fee_bucket",
           "amount": {
             "form": "flat",
             "cents": 25000,
-            "baseAttributeId": "gci"
-          }
+            "baseAttributeId": "commission_amount"
+          },
+          "tracker": "tech_fee_bucket"
         }
       }
     ],
     "payee": "roa",
+    "applies": "per_distinct_agent"
+  },
+  {
+    "waivable": false,
     "version": 1,
-    "updatedAt": "2026-09-03T16:00:00.000Z",
-    "applies": "per_distinct_agent",
+    "updatedAt": "2026-09-10T00:00:00.000Z",
     "split": "none",
     "splitAttributeId": "",
-    "contributesToTracker": "tech_fee_bucket"
-  },
-  {
-    "id": "delinquency_fee",
-    "label": "Delinquency Fee",
-    "waivable": false,
-    "conditions": {
-      "kind": "group",
-      "op": "AND",
-      "children": [
-        {
-          "kind": "condition",
-          "attributeId": "decision",
-          "operator": "eq",
-          "value": "late_submission_recorded"
-        }
-      ]
-    },
-    "branches": [
-      {
-        "when": {
-          "kind": "group",
-          "op": "AND",
-          "children": []
-        },
-        "amount": {
-          "form": "flat",
-          "cents": 15000,
-          "baseAttributeId": "gci"
-        }
-      }
-    ],
-    "payee": "roa",
-    "version": 1,
-    "updatedAt": "2026-09-03T16:00:00.000Z",
-    "applies": "per_transaction",
-    "split": "by_percent_attribute",
-    "splitAttributeId": "side_percentage",
-    "contributesToTracker": "none"
-  },
-  {
+    "contributesToTracker": "post_cap_bucket",
     "id": "capped_status_fee",
     "label": "Capped-Status Fee",
-    "waivable": false,
     "conditions": {
       "kind": "group",
       "op": "AND",
@@ -539,13 +1233,13 @@
           "a": {
             "form": "rate",
             "pct": 15,
-            "baseAttributeId": "gci"
+            "baseAttributeId": "overall_gci"
           },
           "b": {
             "form": "ladder",
             "tracker": "post_cap_bucket",
             "rateType": "flat",
-            "baseAttributeId": "gci",
+            "baseAttributeId": "commission_amount",
             "rows": [
               {
                 "upTo": 500000,
@@ -581,13 +1275,13 @@
           "a": {
             "form": "rate",
             "pct": 15,
-            "baseAttributeId": "gci"
+            "baseAttributeId": "overall_gci"
           },
           "b": {
             "form": "ladder",
             "tracker": "post_cap_bucket",
             "rateType": "flat",
-            "baseAttributeId": "gci",
+            "baseAttributeId": "commission_amount",
             "rows": [
               {
                 "upTo": 500000,
@@ -612,9 +1306,13 @@
           "children": [
             {
               "kind": "condition",
-              "attributeId": "primary_type",
-              "operator": "eq",
-              "value": "lease"
+              "attributeId": "deal_type",
+              "operator": "in",
+              "value": [
+                "Lease Landlord",
+                "Both Lease Tenant & Landlord",
+                "Lease Tenant"
+              ]
             }
           ]
         },
@@ -623,13 +1321,13 @@
           "a": {
             "form": "rate",
             "pct": 15,
-            "baseAttributeId": "gci"
+            "baseAttributeId": "overall_gci"
           },
           "b": {
             "form": "ladder",
             "tracker": "post_cap_bucket",
             "rateType": "flat",
-            "baseAttributeId": "gci",
+            "baseAttributeId": "commission_amount",
             "rows": [
               {
                 "upTo": 500000,
@@ -657,7 +1355,7 @@
           "form": "ladder",
           "tracker": "post_cap_bucket",
           "rateType": "flat",
-          "baseAttributeId": "gci",
+          "baseAttributeId": "commission_amount",
           "rows": [
             {
               "upTo": 500000,
@@ -676,17 +1374,149 @@
       }
     ],
     "payee": "roa",
-    "version": 1,
-    "updatedAt": "2026-09-03T16:00:00.000Z",
-    "applies": "per_distinct_agent",
-    "split": "none",
-    "splitAttributeId": "",
-    "contributesToTracker": "post_cap_bucket"
+    "applies": "per_distinct_agent"
   },
   {
+    "waivable": false,
+    "version": 1,
+    "updatedAt": "2026-09-10T00:00:00.000Z",
+    "split": "none",
+    "splitAttributeId": "",
+    "contributesToTracker": "none",
+    "id": "personal_deal_fee",
+    "label": "Personal-Deal Fee",
+    "conditions": {
+      "kind": "group",
+      "op": "AND",
+      "children": [
+        {
+          "kind": "condition",
+          "attributeId": "personal_deal",
+          "operator": "eq",
+          "value": true
+        },
+        {
+          "kind": "condition",
+          "attributeId": "personal_deal_count",
+          "operator": "lt",
+          "value": 2
+        }
+      ]
+    },
+    "branches": [
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": []
+        },
+        "amount": {
+          "form": "flat",
+          "cents": 85000,
+          "baseAttributeId": "overall_gci"
+        }
+      }
+    ],
+    "payee": "roa",
+    "applies": "per_transaction"
+  },
+  {
+    "waivable": false,
+    "version": 1,
+    "updatedAt": "2026-09-10T00:00:00.000Z",
+    "split": "none",
+    "splitAttributeId": "",
+    "contributesToTracker": "none",
+    "id": "mentor_fee",
+    "label": "Mentor Fee",
+    "conditions": {
+      "kind": "group",
+      "op": "AND",
+      "children": [
+        {
+          "kind": "condition",
+          "attributeId": "commission_plan",
+          "operator": "eq",
+          "value": "standard"
+        },
+        {
+          "kind": "condition",
+          "attributeId": "graduation_status",
+          "operator": "eq",
+          "value": false
+        }
+      ]
+    },
+    "branches": [
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": []
+        },
+        "amount": {
+          "form": "rate",
+          "pct": 15,
+          "baseAttributeId": "commission_amount"
+        }
+      }
+    ],
+    "payee": "mentor",
+    "applies": "per_agent_side"
+  },
+  {
+    "waivable": false,
+    "version": 1,
+    "updatedAt": "2026-09-10T00:00:00.000Z",
+    "split": "none",
+    "splitAttributeId": "",
+    "contributesToTracker": "none",
+    "id": "mentorship_program_fee",
+    "label": "Mentorship Program Fee",
+    "conditions": {
+      "kind": "group",
+      "op": "AND",
+      "children": [
+        {
+          "kind": "condition",
+          "attributeId": "commission_plan",
+          "operator": "eq",
+          "value": "standard"
+        },
+        {
+          "kind": "condition",
+          "attributeId": "graduation_status",
+          "operator": "eq",
+          "value": false
+        }
+      ]
+    },
+    "branches": [
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": []
+        },
+        "amount": {
+          "form": "rate",
+          "pct": 10,
+          "baseAttributeId": "commission_amount"
+        }
+      }
+    ],
+    "payee": "roa",
+    "applies": "per_agent_side"
+  },
+  {
+    "waivable": false,
+    "version": 1,
+    "updatedAt": "2026-09-10T00:00:00.000Z",
+    "split": "none",
+    "splitAttributeId": "",
+    "contributesToTracker": "none",
     "id": "roa_leads_program",
     "label": "ROA Leads Program",
-    "waivable": false,
     "conditions": {
       "kind": "group",
       "op": "AND",
@@ -709,22 +1539,22 @@
         "amount": {
           "form": "rate",
           "pct": 30,
-          "baseAttributeId": "gci"
+          "baseAttributeId": "overall_gci"
         }
       }
     ],
     "payee": "roa",
-    "version": 1,
-    "updatedAt": "2026-09-03T16:00:00.000Z",
-    "applies": "per_transaction",
-    "split": "none",
-    "splitAttributeId": "",
-    "contributesToTracker": "none"
+    "applies": "per_transaction"
   },
   {
+    "waivable": false,
+    "version": 1,
+    "updatedAt": "2026-09-10T00:00:00.000Z",
+    "split": "none",
+    "splitAttributeId": "",
+    "contributesToTracker": "none",
     "id": "kairos_program",
     "label": "Kairos Program",
-    "waivable": false,
     "conditions": {
       "kind": "group",
       "op": "AND",
@@ -747,66 +1577,22 @@
         "amount": {
           "form": "rate",
           "pct": 18,
-          "baseAttributeId": "gci"
+          "baseAttributeId": "overall_gci"
         }
       }
     ],
     "payee": "roa",
+    "applies": "per_transaction"
+  },
+  {
+    "waivable": false,
     "version": 1,
-    "updatedAt": "2026-09-03T16:00:00.000Z",
-    "applies": "per_transaction",
+    "updatedAt": "2026-09-10T00:00:00.000Z",
     "split": "none",
     "splitAttributeId": "",
-    "contributesToTracker": "none"
-  },
-  {
-    "id": "il_admin_fee",
-    "label": "IL Admin Fee",
-    "waivable": false,
-    "conditions": {
-      "kind": "group",
-      "op": "AND",
-      "children": [
-        {
-          "kind": "condition",
-          "attributeId": "state",
-          "operator": "eq",
-          "value": "IL"
-        },
-        {
-          "kind": "condition",
-          "attributeId": "role",
-          "operator": "eq",
-          "value": "listing"
-        }
-      ]
-    },
-    "branches": [
-      {
-        "when": {
-          "kind": "group",
-          "op": "AND",
-          "children": []
-        },
-        "amount": {
-          "form": "flat",
-          "cents": 49500,
-          "baseAttributeId": "gci"
-        }
-      }
-    ],
-    "payee": "statutory",
-    "version": 1,
-    "updatedAt": "2026-09-03T16:00:00.000Z",
-    "applies": "per_transaction",
-    "split": "by_percent_attribute",
-    "splitAttributeId": "side_percentage",
-    "contributesToTracker": "none"
-  },
-  {
+    "contributesToTracker": "none",
     "id": "wa_workers_comp",
     "label": "WA Workers' Compensation (rate TBD — set annually from the WA L&I Rate Notice)",
-    "waivable": false,
     "conditions": {
       "kind": "group",
       "op": "AND",
@@ -829,21 +1615,16 @@
         "amount": {
           "form": "flat",
           "cents": 0,
-          "baseAttributeId": "gci"
+          "baseAttributeId": "commission_amount"
         }
       }
     ],
     "payee": "statutory",
-    "version": 1,
-    "updatedAt": "2026-09-03T16:00:00.000Z",
-    "applies": "per_distinct_agent",
-    "split": "none",
-    "splitAttributeId": "",
-    "contributesToTracker": "none"
+    "applies": "per_distinct_agent"
   },
   {
-    "id": "mentor_fee",
-    "label": "Mentor Fee",
+    "id": "capped_status_fee",
+    "label": "Capped-Status Fee",
     "waivable": false,
     "conditions": {
       "kind": "group",
@@ -851,15 +1632,9 @@
       "children": [
         {
           "kind": "condition",
-          "attributeId": "plan",
+          "attributeId": "cap_position",
           "operator": "eq",
-          "value": "standard"
-        },
-        {
-          "kind": "condition",
-          "attributeId": "milestone",
-          "operator": "neq",
-          "value": "graduated"
+          "value": "capped"
         }
       ]
     },
@@ -867,47 +1642,61 @@
       {
         "when": {
           "kind": "group",
-          "op": "AND",
-          "children": []
+          "op": "OR",
+          "children": [
+            {
+              "kind": "condition",
+              "attributeId": "source",
+              "operator": "eq",
+              "value": "inbound_referral"
+            },
+            {
+              "kind": "condition",
+              "attributeId": "deal_subtype",
+              "operator": "eq",
+              "value": "builder_flat_fee"
+            },
+            {
+              "kind": "condition",
+              "attributeId": "deal_type",
+              "operator": "in",
+              "value": [
+                "Lease Landlord",
+                "Both Lease Tenant & Landlord",
+                "Lease Tenant"
+              ]
+            }
+          ]
         },
         "amount": {
-          "form": "rate",
-          "pct": 15,
-          "baseAttributeId": "gci"
+          "form": "min",
+          "a": {
+            "form": "rate",
+            "pct": 15,
+            "baseAttributeId": "commission_amount"
+          },
+          "b": {
+            "form": "ladder",
+            "tracker": "post_cap_bucket",
+            "rateType": "flat",
+            "baseAttributeId": "commission_amount",
+            "rows": [
+              {
+                "upTo": 5000,
+                "value": 250
+              },
+              {
+                "upTo": 10000,
+                "value": 125
+              },
+              {
+                "upTo": null,
+                "value": 75
+              }
+            ]
+          }
         }
-      }
-    ],
-    "payee": "mentor",
-    "version": 1,
-    "updatedAt": "2026-09-03T16:00:00.000Z",
-    "applies": "per_agent_side",
-    "split": "none",
-    "splitAttributeId": "",
-    "contributesToTracker": "none"
-  },
-  {
-    "id": "mentorship_program_fee",
-    "label": "Mentorship Program Fee",
-    "waivable": false,
-    "conditions": {
-      "kind": "group",
-      "op": "AND",
-      "children": [
-        {
-          "kind": "condition",
-          "attributeId": "plan",
-          "operator": "eq",
-          "value": "standard"
-        },
-        {
-          "kind": "condition",
-          "attributeId": "milestone",
-          "operator": "neq",
-          "value": "graduated"
-        }
-      ]
-    },
-    "branches": [
+      },
       {
         "when": {
           "kind": "group",
@@ -915,28 +1704,121 @@
           "children": []
         },
         "amount": {
-          "form": "rate",
-          "pct": 10,
-          "baseAttributeId": "gci"
+          "form": "ladder",
+          "tracker": "post_cap_bucket",
+          "rateType": "flat",
+          "baseAttributeId": "commission_amount",
+          "rows": [
+            {
+              "upTo": 5000,
+              "value": 250
+            },
+            {
+              "upTo": 10000,
+              "value": 125
+            },
+            {
+              "upTo": null,
+              "value": 75
+            }
+          ]
         }
       }
     ],
     "payee": "roa",
-    "version": 1,
-    "updatedAt": "2026-09-03T16:00:00.000Z",
-    "applies": "per_agent_side",
+    "applies": "per_distinct_agent",
     "split": "none",
     "splitAttributeId": "",
-    "contributesToTracker": "none"
+    "contributesToTracker": "post_cap_bucket",
+    "version": 2,
+    "updatedAt": "2026-09-10T12:24:18.797Z"
   },
   {
-    "id": "test",
-    "label": "test",
+    "id": "technology_fee",
+    "label": "Technology Fee",
+    "waivable": true,
+    "conditions": {
+      "kind": "group",
+      "op": "AND",
+      "children": [
+        {
+          "kind": "condition",
+          "attributeId": "tech_fee_progress",
+          "operator": "lt",
+          "value": 750
+        }
+      ]
+    },
+    "branches": [
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": [
+            {
+              "kind": "condition",
+              "attributeId": "overall_gci",
+              "operator": "lt",
+              "value": 1000
+            }
+          ]
+        },
+        "amount": {
+          "form": "capped_by",
+          "amount": {
+            "form": "flat",
+            "cents": 125,
+            "baseAttributeId": "commission_amount"
+          },
+          "tracker": "tech_fee_bucket"
+        }
+      },
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": []
+        },
+        "amount": {
+          "form": "capped_by",
+          "amount": {
+            "form": "flat",
+            "cents": 250,
+            "baseAttributeId": "commission_amount"
+          },
+          "tracker": "tech_fee_bucket"
+        }
+      }
+    ],
+    "payee": "roa",
+    "applies": "per_distinct_agent",
+    "split": "none",
+    "splitAttributeId": "",
+    "contributesToTracker": "tech_fee_bucket",
+    "version": 2,
+    "updatedAt": "2026-09-10T12:25:19.543Z"
+  },
+  {
+    "id": "personal_deal_fee",
+    "label": "Personal-Deal Fee",
     "waivable": false,
     "conditions": {
       "kind": "group",
       "op": "AND",
-      "children": []
+      "children": [
+        {
+          "kind": "condition",
+          "attributeId": "personal_deal",
+          "operator": "eq",
+          "value": true
+        },
+        {
+          "kind": "condition",
+          "attributeId": "personal_deal_count",
+          "operator": "lt",
+          "value": 2
+        }
+      ]
     },
     "branches": [
       {
@@ -947,22 +1829,22 @@
         },
         "amount": {
           "form": "flat",
-          "cents": 10000,
-          "baseAttributeId": "gci"
+          "cents": 850,
+          "baseAttributeId": "commission_amount"
         }
       }
     ],
     "payee": "roa",
-    "version": 1,
-    "updatedAt": "2026-09-03T15:51:57.529Z",
     "applies": "per_transaction",
     "split": "none",
     "splitAttributeId": "",
-    "contributesToTracker": "none"
+    "contributesToTracker": "none",
+    "version": 2,
+    "updatedAt": "2026-09-10T12:28:38.191Z"
   },
   {
-    "id": "standard_plan",
-    "label": "Standard Plan (Company Dollar + Floor)",
+    "id": "risk_fee",
+    "label": "Risk Fee",
     "waivable": false,
     "conditions": {
       "kind": "group",
@@ -970,9 +1852,21 @@
       "children": [
         {
           "kind": "condition",
-          "attributeId": "plan",
-          "operator": "eq",
-          "value": "standard"
+          "attributeId": "source",
+          "operator": "neq",
+          "value": "inbound_referral"
+        },
+        {
+          "kind": "condition",
+          "attributeId": "portion",
+          "operator": "neq",
+          "value": "pass_through"
+        },
+        {
+          "kind": "condition",
+          "attributeId": "commission_plan",
+          "operator": "neq",
+          "value": "lfro"
         }
       ]
     },
@@ -981,163 +1875,236 @@
         "when": {
           "kind": "group",
           "op": "AND",
-          "children": [
-            {
-              "kind": "condition",
-              "attributeId": "primary_type",
-              "operator": "eq",
-              "value": "lease"
-            },
-            {
-              "kind": "condition",
-              "attributeId": "source",
-              "operator": "neq",
-              "value": "inbound_referral"
-            }
-          ]
-        },
-        "amount": {
-          "form": "max",
-          "a": {
-            "form": "ladder",
-            "tracker": "cap_accumulation",
-            "rateType": "percent",
-            "baseAttributeId": "gci",
-            "rows": [
-              {
-                "upTo": 1400000,
-                "value": 15
-              },
-              {
-                "upTo": null,
-                "value": 0
-              }
-            ]
-          },
-          "b": {
-            "form": "flat",
-            "cents": 12500,
-            "baseAttributeId": "gci"
-          }
-        }
-      },
-      {
-        "when": {
-          "kind": "group",
-          "op": "AND",
-          "children": [
-            {
-              "kind": "condition",
-              "attributeId": "primary_type",
-              "operator": "eq",
-              "value": "sale"
-            },
-            {
-              "kind": "condition",
-              "attributeId": "source",
-              "operator": "neq",
-              "value": "inbound_referral"
-            },
-            {
-              "kind": "condition",
-              "attributeId": "deal_subtype",
-              "operator": "not_in",
-              "value": [
-                "reo_hud",
-                "short_sale",
-                "bpo"
-              ]
-            },
-            {
-              "kind": "condition",
-              "attributeId": "personal_allowance",
-              "operator": "eq",
-              "value": "not_active"
-            },
-            {
-              "kind": "condition",
-              "attributeId": "cap_position",
-              "operator": "eq",
-              "value": "pre_cap"
-            }
-          ]
-        },
-        "amount": {
-          "form": "max",
-          "a": {
-            "form": "ladder",
-            "tracker": "cap_accumulation",
-            "rateType": "percent",
-            "baseAttributeId": "gci",
-            "rows": [
-              {
-                "upTo": 1400000,
-                "value": 15
-              },
-              {
-                "upTo": null,
-                "value": 0
-              }
-            ]
-          },
-          "b": {
-            "form": "flat",
-            "cents": 55000,
-            "baseAttributeId": "gci"
-          }
-        }
-      },
-      {
-        "when": {
-          "kind": "group",
-          "op": "AND",
           "children": []
         },
         "amount": {
-          "form": "ladder",
-          "tracker": "cap_accumulation",
-          "rateType": "percent",
-          "baseAttributeId": "gci",
-          "rows": [
-            {
-              "upTo": 1400000,
-              "value": 15
-            },
-            {
-              "upTo": null,
-              "value": 0
-            }
-          ]
+          "form": "flat",
+          "cents": 50,
+          "baseAttributeId": "commission_amount"
         }
       }
     ],
     "payee": "roa",
-    "version": 3,
-    "updatedAt": "2026-09-03T16:01:42.728Z",
-    "applies": "per_transaction",
-    "split": "none",
-    "splitAttributeId": "",
-    "contributesToTracker": "cap_accumulation"
+    "version": 1,
+    "updatedAt": "2026-09-10T00:00:00.000Z",
+    "applies": "per_agent_side",
+    "split": "by_percent_attribute",
+    "splitAttributeId": "side_percentage",
+    "contributesToTracker": "none"
   },
   {
-    "id": "standard_plan",
-    "label": "Standard Plan (Company Dollar + Floor)",
+    "id": "il_admin_fee",
+    "label": "IL Admin Fee",
     "waivable": false,
     "conditions": {
       "kind": "group",
-      "op": "OR",
+      "op": "AND",
       "children": [
         {
           "kind": "condition",
-          "attributeId": "plan",
+          "attributeId": "state",
           "operator": "eq",
-          "value": "standard"
+          "value": "IL"
         },
         {
           "kind": "condition",
-          "attributeId": "plan",
+          "attributeId": "side",
           "operator": "eq",
-          "value": "half_cap"
+          "value": "listing"
+        }
+      ]
+    },
+    "branches": [
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": []
+        },
+        "amount": {
+          "form": "flat",
+          "cents": 495,
+          "baseAttributeId": "commission_amount"
+        }
+      }
+    ],
+    "payee": "statutory",
+    "version": 1,
+    "updatedAt": "2026-09-10T00:00:00.000Z",
+    "applies": "per_agent_side",
+    "split": "by_percent_attribute",
+    "splitAttributeId": "side_percentage",
+    "contributesToTracker": "none"
+  },
+  {
+    "id": "delinquency_fee",
+    "label": "Delinquency Fee",
+    "waivable": false,
+    "conditions": {
+      "kind": "group",
+      "op": "AND",
+      "children": [
+        {
+          "kind": "condition",
+          "attributeId": "decision",
+          "operator": "eq",
+          "value": "late_submission_recorded"
+        }
+      ]
+    },
+    "branches": [
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": []
+        },
+        "amount": {
+          "form": "flat",
+          "cents": 150,
+          "baseAttributeId": "commission_amount"
+        }
+      }
+    ],
+    "payee": "roa",
+    "version": 1,
+    "updatedAt": "2026-09-10T00:00:00.000Z",
+    "applies": "per_agent_side",
+    "split": "by_percent_attribute",
+    "splitAttributeId": "transaction_percentage",
+    "contributesToTracker": "none"
+  },
+  {
+    "id": "delinquency_fee",
+    "label": "Delinquency Fee",
+    "waivable": false,
+    "conditions": {
+      "kind": "group",
+      "op": "AND",
+      "children": [
+        {
+          "kind": "condition",
+          "attributeId": "decision",
+          "operator": "eq",
+          "value": "late_submission_recorded"
+        }
+      ]
+    },
+    "branches": [
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": []
+        },
+        "amount": {
+          "form": "flat",
+          "cents": 150,
+          "baseAttributeId": "commission_amount"
+        }
+      }
+    ],
+    "payee": "roa",
+    "applies": "per_agent_side",
+    "split": "by_percent_attribute",
+    "splitAttributeId": "side_percentage",
+    "contributesToTracker": "none",
+    "version": 2,
+    "updatedAt": "2026-09-10T13:50:18.762Z"
+  },
+  {
+    "id": "inbound_referral_fee",
+    "label": "Inbound Referral Fee",
+    "waivable": false,
+    "conditions": {
+      "kind": "group",
+      "op": "AND",
+      "children": [
+        {
+          "kind": "condition",
+          "attributeId": "source",
+          "operator": "eq",
+          "value": "inbound_referral"
+        }
+      ]
+    },
+    "branches": [
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": []
+        },
+        "amount": {
+          "form": "from_facts",
+          "attributeId": "referral_agreement"
+        }
+      }
+    ],
+    "payee": "external_brokerage",
+    "version": 1,
+    "updatedAt": "2026-09-10T00:00:00.000Z",
+    "applies": "per_transaction",
+    "split": "none",
+    "splitAttributeId": "",
+    "contributesToTracker": "none"
+  },
+  {
+    "id": "outbound_referral_passthrough",
+    "label": "Outbound Referral Pass-Through",
+    "waivable": false,
+    "conditions": {
+      "kind": "group",
+      "op": "AND",
+      "children": [
+        {
+          "kind": "condition",
+          "attributeId": "deal_type",
+          "operator": "eq",
+          "value": "Referral"
+        },
+        {
+          "kind": "condition",
+          "attributeId": "direction",
+          "operator": "eq",
+          "value": "outbound"
+        }
+      ]
+    },
+    "branches": [
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": []
+        },
+        "amount": {
+          "form": "from_facts",
+          "attributeId": "referral_agreement"
+        }
+      }
+    ],
+    "payee": "referring_agent",
+    "version": 1,
+    "updatedAt": "2026-09-10T00:00:00.000Z",
+    "applies": "per_transaction",
+    "split": "none",
+    "splitAttributeId": "",
+    "contributesToTracker": "none"
+  },
+  {
+    "id": "technology_fee",
+    "label": "Technology Fee",
+    "waivable": true,
+    "conditions": {
+      "kind": "group",
+      "op": "AND",
+      "children": [
+        {
+          "kind": "condition",
+          "attributeId": "tech_fee_progress",
+          "operator": "lt",
+          "value": 750
         }
       ]
     },
@@ -1149,21 +2116,166 @@
           "children": [
             {
               "kind": "condition",
-              "attributeId": "primary_type",
+              "attributeId": "overall_gci",
+              "operator": "lt",
+              "value": 1000
+            }
+          ]
+        },
+        "amount": {
+          "form": "capped_by",
+          "amount": {
+            "form": "flat",
+            "cents": 125,
+            "baseAttributeId": "commission_amount"
+          },
+          "tracker": "tech_fee_bucket",
+          "progressAttributeId": "tech_fee_progress",
+          "target": 750
+        }
+      },
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": []
+        },
+        "amount": {
+          "form": "capped_by",
+          "amount": {
+            "form": "flat",
+            "cents": 250,
+            "baseAttributeId": "commission_amount"
+          },
+          "tracker": "tech_fee_bucket",
+          "progressAttributeId": "tech_fee_progress",
+          "target": 750
+        }
+      }
+    ],
+    "payee": "roa",
+    "applies": "per_distinct_agent",
+    "split": "none",
+    "splitAttributeId": "",
+    "contributesToTracker": "tech_fee_bucket",
+    "version": 3,
+    "updatedAt": "2026-09-10T14:40:38.278Z"
+  },
+  {
+    "id": "technology_fee",
+    "label": "Technology Fee",
+    "waivable": true,
+    "conditions": {
+      "kind": "group",
+      "op": "AND",
+      "children": [
+        {
+          "kind": "condition",
+          "attributeId": "tech_fee_progress",
+          "operator": "lt",
+          "value": 750
+        }
+      ]
+    },
+    "branches": [
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": [
+            {
+              "kind": "condition",
+              "attributeId": "overall_gci",
+              "operator": "lt",
+              "value": 1000
+            }
+          ]
+        },
+        "amount": {
+          "form": "capped_by",
+          "amount": {
+            "form": "flat",
+            "cents": 125,
+            "baseAttributeId": "commission_amount"
+          },
+          "tracker": "tech_fee_bucket",
+          "progressAttributeId": "tech_fee_progress",
+          "target": 750
+        }
+      },
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": []
+        },
+        "amount": {
+          "form": "capped_by",
+          "amount": {
+            "form": "flat",
+            "cents": 250,
+            "baseAttributeId": "commission_amount"
+          },
+          "tracker": "tech_fee_bucket",
+          "progressAttributeId": "tech_fee_progress",
+          "target": 750
+        }
+      }
+    ],
+    "payee": "roa",
+    "applies": "per_distinct_agent",
+    "split": "none",
+    "splitAttributeId": "",
+    "contributesToTracker": "tech_fee_bucket",
+    "version": 4,
+    "updatedAt": "2026-09-10T14:45:43.209Z"
+  },
+  {
+    "id": "company_dollar",
+    "label": "Company Dollar",
+    "waivable": false,
+    "conditions": {
+      "kind": "group",
+      "op": "AND",
+      "children": [
+        {
+          "kind": "condition",
+          "attributeId": "deal_type",
+          "operator": "not_in",
+          "value": [
+            "Referral",
+            "Other"
+          ]
+        }
+      ]
+    },
+    "branches": [
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": [
+            {
+              "kind": "condition",
+              "attributeId": "commission_plan",
               "operator": "eq",
-              "value": "lease"
+              "value": "standard"
+            },
+            {
+              "kind": "condition",
+              "attributeId": "deal_type",
+              "operator": "in",
+              "value": [
+                "Lease Landlord",
+                "Both Lease Tenant & Landlord",
+                "Lease Tenant"
+              ]
             },
             {
               "kind": "condition",
               "attributeId": "source",
               "operator": "neq",
               "value": "inbound_referral"
-            },
-            {
-              "kind": "condition",
-              "attributeId": "plan",
-              "operator": "eq",
-              "value": "standard"
             }
           ]
         },
@@ -1173,10 +2285,10 @@
             "form": "ladder",
             "tracker": "cap_accumulation",
             "rateType": "percent",
-            "baseAttributeId": "gci",
+            "baseAttributeId": "commission_amount",
             "rows": [
               {
-                "upTo": 1400000,
+                "upTo": 14000,
                 "value": 15
               },
               {
@@ -1187,8 +2299,8 @@
           },
           "b": {
             "form": "flat",
-            "cents": 12500,
-            "baseAttributeId": "gci"
+            "cents": 125,
+            "baseAttributeId": "commission_amount"
           }
         }
       },
@@ -1199,9 +2311,19 @@
           "children": [
             {
               "kind": "condition",
-              "attributeId": "primary_type",
+              "attributeId": "commission_plan",
               "operator": "eq",
-              "value": "sale"
+              "value": "standard"
+            },
+            {
+              "kind": "condition",
+              "attributeId": "deal_type",
+              "operator": "in",
+              "value": [
+                "Both Purchase & Listing",
+                "Listing",
+                "Purchase"
+              ]
             },
             {
               "kind": "condition",
@@ -1222,8 +2344,8 @@
             {
               "kind": "condition",
               "attributeId": "personal_allowance",
-              "operator": "eq",
-              "value": "not_active"
+              "operator": "neq",
+              "value": "active"
             },
             {
               "kind": "condition",
@@ -1239,10 +2361,10 @@
             "form": "ladder",
             "tracker": "cap_accumulation",
             "rateType": "percent",
-            "baseAttributeId": "gci",
+            "baseAttributeId": "commission_amount",
             "rows": [
               {
-                "upTo": 1400000,
+                "upTo": 14000,
                 "value": 15
               },
               {
@@ -1253,8 +2375,234 @@
           },
           "b": {
             "form": "flat",
-            "cents": 55000,
-            "baseAttributeId": "gci"
+            "cents": 500,
+            "baseAttributeId": "commission_amount"
+          }
+        }
+      },
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": [
+            {
+              "kind": "condition",
+              "attributeId": "commission_plan",
+              "operator": "eq",
+              "value": "half_cap"
+            },
+            {
+              "kind": "condition",
+              "attributeId": "deal_type",
+              "operator": "in",
+              "value": [
+                "Lease Landlord",
+                "Both Lease Tenant & Landlord",
+                "Lease Tenant"
+              ]
+            },
+            {
+              "kind": "condition",
+              "attributeId": "source",
+              "operator": "neq",
+              "value": "inbound_referral"
+            }
+          ]
+        },
+        "amount": {
+          "form": "max",
+          "a": {
+            "form": "ladder",
+            "tracker": "cap_accumulation",
+            "rateType": "percent",
+            "baseAttributeId": "commission_amount",
+            "rows": [
+              {
+                "upTo": 7000,
+                "value": 15
+              },
+              {
+                "upTo": null,
+                "value": 0
+              }
+            ]
+          },
+          "b": {
+            "form": "flat",
+            "cents": 125,
+            "baseAttributeId": "commission_amount"
+          }
+        }
+      },
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": [
+            {
+              "kind": "condition",
+              "attributeId": "commission_plan",
+              "operator": "eq",
+              "value": "half_cap"
+            },
+            {
+              "kind": "condition",
+              "attributeId": "deal_type",
+              "operator": "in",
+              "value": [
+                "Both Purchase & Listing",
+                "Listing",
+                "Purchase"
+              ]
+            },
+            {
+              "kind": "condition",
+              "attributeId": "source",
+              "operator": "neq",
+              "value": "inbound_referral"
+            },
+            {
+              "kind": "condition",
+              "attributeId": "deal_subtype",
+              "operator": "not_in",
+              "value": [
+                "reo_hud",
+                "short_sale",
+                "bpo"
+              ]
+            },
+            {
+              "kind": "condition",
+              "attributeId": "personal_allowance",
+              "operator": "neq",
+              "value": "active"
+            },
+            {
+              "kind": "condition",
+              "attributeId": "cap_position",
+              "operator": "eq",
+              "value": "pre_cap"
+            }
+          ]
+        },
+        "amount": {
+          "form": "max",
+          "a": {
+            "form": "ladder",
+            "tracker": "cap_accumulation",
+            "rateType": "percent",
+            "baseAttributeId": "commission_amount",
+            "rows": [
+              {
+                "upTo": 7000,
+                "value": 15
+              },
+              {
+                "upTo": null,
+                "value": 0
+              }
+            ]
+          },
+          "b": {
+            "form": "flat",
+            "cents": 500,
+            "baseAttributeId": "commission_amount"
+          }
+        }
+      },
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": []
+        },
+        "amount": {
+          "form": "flat",
+          "cents": 0,
+          "baseAttributeId": "commission_amount"
+        }
+      }
+    ],
+    "payee": "roa",
+    "applies": "per_agent_side",
+    "split": "none",
+    "splitAttributeId": "",
+    "contributesToTracker": "cap_accumulation",
+    "version": 4,
+    "updatedAt": "2026-09-10T15:52:45.588Z"
+  },
+  {
+    "id": "capped_status_fee",
+    "label": "Capped-Status Fee",
+    "waivable": false,
+    "conditions": {
+      "kind": "group",
+      "op": "AND",
+      "children": [
+        {
+          "kind": "condition",
+          "attributeId": "cap_position",
+          "operator": "eq",
+          "value": "capped"
+        }
+      ]
+    },
+    "branches": [
+      {
+        "when": {
+          "kind": "group",
+          "op": "OR",
+          "children": [
+            {
+              "kind": "condition",
+              "attributeId": "is_referral",
+              "operator": "eq",
+              "value": false
+            },
+            {
+              "kind": "condition",
+              "attributeId": "deal_subtype",
+              "operator": "eq",
+              "value": "builder_flat_fee"
+            },
+            {
+              "kind": "condition",
+              "attributeId": "deal_type",
+              "operator": "in",
+              "value": [
+                "Lease Landlord",
+                "Both Lease Tenant & Landlord",
+                "Lease Tenant"
+              ]
+            }
+          ]
+        },
+        "amount": {
+          "form": "min",
+          "a": {
+            "form": "rate",
+            "pct": 15,
+            "baseAttributeId": "commission_amount"
+          },
+          "b": {
+            "form": "ladder",
+            "tracker": "post_cap_bucket",
+            "rateType": "flat",
+            "baseAttributeId": "commission_amount",
+            "rows": [
+              {
+                "upTo": 5000,
+                "value": 250
+              },
+              {
+                "upTo": 10000,
+                "value": 125
+              },
+              {
+                "upTo": null,
+                "value": 75
+              }
+            ]
           }
         }
       },
@@ -1266,66 +2614,354 @@
         },
         "amount": {
           "form": "ladder",
-          "tracker": "cap_accumulation",
-          "rateType": "percent",
-          "baseAttributeId": "gci",
+          "tracker": "post_cap_bucket",
+          "rateType": "flat",
+          "baseAttributeId": "commission_amount",
           "rows": [
             {
-              "upTo": 1400000,
-              "value": 15
+              "upTo": 5000,
+              "value": 250
+            },
+            {
+              "upTo": 10000,
+              "value": 125
             },
             {
               "upTo": null,
-              "value": 0
+              "value": 75
             }
           ]
+        }
+      }
+    ],
+    "payee": "roa",
+    "applies": "per_distinct_agent",
+    "split": "none",
+    "splitAttributeId": "",
+    "contributesToTracker": "post_cap_bucket",
+    "version": 3,
+    "updatedAt": "2026-09-10T17:12:34.824Z"
+  },
+  {
+    "id": "capped_status_fee",
+    "label": "Capped-Status Fee",
+    "waivable": false,
+    "conditions": {
+      "kind": "group",
+      "op": "AND",
+      "children": [
+        {
+          "kind": "condition",
+          "attributeId": "cap_position",
+          "operator": "eq",
+          "value": "capped"
+        }
+      ]
+    },
+    "branches": [
+      {
+        "when": {
+          "kind": "group",
+          "op": "OR",
+          "children": [
+            {
+              "kind": "condition",
+              "attributeId": "source",
+              "operator": "eq",
+              "value": "inbound_referral"
+            },
+            {
+              "kind": "condition",
+              "attributeId": "deal_subtype",
+              "operator": "eq",
+              "value": "builder_flat_fee"
+            },
+            {
+              "kind": "condition",
+              "attributeId": "deal_type",
+              "operator": "in",
+              "value": [
+                "Lease Landlord",
+                "Both Lease Tenant & Landlord",
+                "Lease Tenant"
+              ]
+            }
+          ]
+        },
+        "amount": {
+          "form": "min",
+          "a": {
+            "form": "rate",
+            "pct": 15,
+            "baseAttributeId": "commission_amount"
+          },
+          "b": {
+            "form": "ladder",
+            "tracker": "post_cap_bucket",
+            "rateType": "flat",
+            "baseAttributeId": "commission_amount",
+            "rows": [
+              {
+                "upTo": 5000,
+                "value": 250
+              },
+              {
+                "upTo": 10000,
+                "value": 125
+              },
+              {
+                "upTo": null,
+                "value": 75
+              }
+            ]
+          }
         }
       },
       {
         "when": {
           "kind": "group",
           "op": "AND",
-          "children": [
-            {
-              "kind": "condition",
-              "attributeId": "plan",
-              "operator": "eq",
-              "value": "half_cap"
-            }
-          ]
+          "children": []
         },
         "amount": {
-          "form": "max",
-          "a": {
-            "form": "ladder",
-            "tracker": "cap_accumulation",
-            "rateType": "percent",
-            "baseAttributeId": "gci",
-            "rows": [
-              {
-                "upTo": 700000,
-                "value": 0
-              },
-              {
-                "upTo": 0,
-                "value": 15
-              }
-            ]
-          },
-          "b": {
-            "form": "flat",
-            "cents": 15000,
-            "baseAttributeId": "gci"
-          }
+          "form": "ladder",
+          "tracker": "post_cap_bucket",
+          "rateType": "flat",
+          "baseAttributeId": "commission_amount",
+          "rows": [
+            {
+              "upTo": 5000,
+              "value": 250
+            },
+            {
+              "upTo": 10000,
+              "value": 125
+            },
+            {
+              "upTo": null,
+              "value": 75
+            }
+          ]
         }
       }
     ],
     "payee": "roa",
+    "applies": "per_distinct_agent",
+    "split": "none",
+    "splitAttributeId": "",
+    "contributesToTracker": "post_cap_bucket",
     "version": 4,
-    "updatedAt": "2026-09-03T16:08:37.906Z",
+    "updatedAt": "2026-09-10T17:14:03.712Z"
+  },
+  {
+    "id": "risk_fee",
+    "label": "Risk Fee",
+    "waivable": false,
+    "conditions": {
+      "kind": "group",
+      "op": "AND",
+      "children": [
+        {
+          "kind": "condition",
+          "attributeId": "is_referral",
+          "operator": "eq",
+          "value": false
+        },
+        {
+          "kind": "condition",
+          "attributeId": "portion",
+          "operator": "neq",
+          "value": "pass_through"
+        },
+        {
+          "kind": "condition",
+          "attributeId": "commission_plan",
+          "operator": "neq",
+          "value": "lfro"
+        }
+      ]
+    },
+    "branches": [
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": []
+        },
+        "amount": {
+          "form": "flat",
+          "cents": 50,
+          "baseAttributeId": "commission_amount"
+        }
+      }
+    ],
+    "payee": "roa",
+    "applies": "per_agent_side",
+    "split": "by_percent_attribute",
+    "splitAttributeId": "side_percentage",
+    "contributesToTracker": "none",
+    "version": 2,
+    "updatedAt": "2026-09-10T17:14:28.550Z"
+  },
+  {
+    "id": "risk_fee",
+    "label": "Risk Fee",
+    "waivable": false,
+    "conditions": {
+      "kind": "group",
+      "op": "AND",
+      "children": [
+        {
+          "kind": "condition",
+          "attributeId": "is_referral",
+          "operator": "eq",
+          "value": false
+        },
+        {
+          "kind": "condition",
+          "attributeId": "portion",
+          "operator": "neq",
+          "value": "pass_through"
+        },
+        {
+          "kind": "condition",
+          "attributeId": "commission_plan",
+          "operator": "neq",
+          "value": "lfro"
+        }
+      ]
+    },
+    "branches": [
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": []
+        },
+        "amount": {
+          "form": "flat",
+          "cents": 100,
+          "baseAttributeId": "commission_amount"
+        }
+      }
+    ],
+    "payee": "roa",
+    "applies": "per_agent_side",
+    "split": "by_percent_attribute",
+    "splitAttributeId": "side_percentage",
+    "contributesToTracker": "none",
+    "version": 3,
+    "updatedAt": "2026-09-10T17:15:11.393Z"
+  },
+  {
+    "id": "capped_status_fee",
+    "label": "Capped-Status Fee",
+    "waivable": false,
+    "conditions": {
+      "kind": "group",
+      "op": "AND",
+      "children": [
+        {
+          "kind": "condition",
+          "attributeId": "cap_position",
+          "operator": "eq",
+          "value": "capped"
+        }
+      ]
+    },
+    "branches": [
+      {
+        "when": {
+          "kind": "group",
+          "op": "OR",
+          "children": [
+            {
+              "kind": "condition",
+              "attributeId": "source",
+              "operator": "eq",
+              "value": "inbound_referral"
+            },
+            {
+              "kind": "condition",
+              "attributeId": "deal_subtype",
+              "operator": "eq",
+              "value": "builder_flat_fee"
+            },
+            {
+              "kind": "condition",
+              "attributeId": "deal_type",
+              "operator": "in",
+              "value": [
+                "Lease Landlord",
+                "Both Lease Tenant & Landlord",
+                "Lease Tenant"
+              ]
+            }
+          ]
+        },
+        "amount": {
+          "form": "min",
+          "a": {
+            "form": "rate",
+            "pct": 15,
+            "baseAttributeId": "commission_amount"
+          },
+          "b": {
+            "form": "ladder",
+            "tracker": "post_cap_bucket",
+            "rateType": "flat",
+            "baseAttributeId": "commission_amount",
+            "rows": [
+              {
+                "upTo": 5000,
+                "value": 250
+              },
+              {
+                "upTo": 10000,
+                "value": 125
+              },
+              {
+                "upTo": null,
+                "value": 75
+              }
+            ]
+          }
+        }
+      },
+      {
+        "when": {
+          "kind": "group",
+          "op": "AND",
+          "children": []
+        },
+        "amount": {
+          "form": "ladder",
+          "tracker": "post_cap_bucket",
+          "rateType": "flat",
+          "baseAttributeId": "commission_amount",
+          "rows": [
+            {
+              "upTo": 5000,
+              "value": 250
+            },
+            {
+              "upTo": 10000,
+              "value": 125
+            },
+            {
+              "upTo": null,
+              "value": 75
+            }
+          ]
+        }
+      }
+    ],
+    "payee": "roa",
     "applies": "per_agent_side",
     "split": "none",
     "splitAttributeId": "",
-    "contributesToTracker": "cap_accumulation"
+    "contributesToTracker": "post_cap_bucket",
+    "version": 5,
+    "updatedAt": "2026-09-10T17:17:34.248Z"
   }
 ]

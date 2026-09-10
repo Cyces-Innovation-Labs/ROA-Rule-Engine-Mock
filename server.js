@@ -23,16 +23,26 @@ const ROOT = __dirname;
 const RESOURCES = {
   '/api/attributes': path.join(ROOT, 'attributes-data.json'),
   '/api/rules': path.join(ROOT, 'rules-data.json'),
+  '/api/transactions': path.join(ROOT, 'transactions-data.json'),
+  '/api/agents': path.join(ROOT, 'agents-data.json'),
 };
 
-// Path-based routing: the app has two client-side "pages" (Attributes,
-// Rules), navigated via the History API (no router library — see
-// index.html's App component). The browser can request either path
-// directly (typed URL, refresh, bookmark), so the server must answer both
-// with index.html rather than 404ing — this is the standard SPA-fallback
-// pattern, kept to an explicit, small list rather than a catch-all, so a
-// genuinely missing asset still 404s normally.
-const APP_ROUTES = ['/', '/attributes', '/rules'];
+// Path-based routing: the app has five client-side "pages" (Attributes,
+// Rules, Transactions, Agents, Calculations), navigated via the History
+// API (no router library — see index.html's App component). The browser
+// can request any path directly (typed URL, refresh, bookmark), so the
+// server must answer all of them with index.html rather than 404ing —
+// this is the standard SPA-fallback pattern, kept to an explicit, small
+// list rather than a catch-all, so a genuinely missing asset still 404s
+// normally.
+//
+// A "Trackers" tab (tracker definitions + per-owner balances) was tried
+// and reverted 2026-09-10 — real design (target-by-plan, owner exceptions
+// for Domestic Team, career vs anniversary periods) needs more thought
+// before committing to a schema. capped_by's own inline `target`/
+// `progressAttributeId` fields (see rules.js) are the current mechanism
+// until that's revisited.
+const APP_ROUTES = ['/', '/attributes', '/rules', '/transactions', '/agents', '/calculations'];
 
 const MIME_TYPES = {
   '.html': 'text/html',

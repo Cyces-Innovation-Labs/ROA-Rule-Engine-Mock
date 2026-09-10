@@ -1,7 +1,101 @@
 [
   {
-    "id": "primary_type",
-    "label": "Primary Type",
+    "id": "sale_guid",
+    "label": "Sale GUID",
+    "type": "text",
+    "operators": [
+      "eq",
+      "neq",
+      "is_empty",
+      "is_not_empty"
+    ],
+    "valueWidget": "text_input",
+    "valueLabel": "Sale GUID",
+    "resolver": {
+      "kind": "path",
+      "path": "transaction.sale_guid"
+    },
+    "allowedValuesSource": null,
+    "version": 1,
+    "updatedAt": "2026-09-09T00:00:00.000Z"
+  },
+  {
+    "id": "listing_price",
+    "label": "Listing Price",
+    "type": "number",
+    "operators": [
+      "eq",
+      "neq",
+      "gt",
+      "lt",
+      "gte",
+      "lte",
+      "between",
+      "in",
+      "not_in",
+      "is_empty",
+      "is_not_empty"
+    ],
+    "valueWidget": "number_input",
+    "valueLabel": "Listing Price ($)",
+    "resolver": {
+      "kind": "path",
+      "path": "transaction.listing_price"
+    },
+    "allowedValuesSource": null,
+    "version": 1,
+    "updatedAt": "2026-09-09T00:00:00.000Z"
+  },
+  {
+    "id": "sale_price",
+    "label": "Sale Price",
+    "type": "number",
+    "operators": [
+      "eq",
+      "neq",
+      "gt",
+      "lt",
+      "gte",
+      "lte",
+      "between",
+      "in",
+      "not_in",
+      "is_empty",
+      "is_not_empty"
+    ],
+    "valueWidget": "number_input",
+    "valueLabel": "Sale Price ($)",
+    "resolver": {
+      "kind": "path",
+      "path": "transaction.sale_price"
+    },
+    "allowedValuesSource": null,
+    "version": 1,
+    "updatedAt": "2026-09-09T00:00:00.000Z"
+  },
+  {
+    "id": "property_address",
+    "label": "Property Address",
+    "type": "text",
+    "operators": [
+      "eq",
+      "neq",
+      "is_empty",
+      "is_not_empty"
+    ],
+    "valueWidget": "text_input",
+    "valueLabel": "Property Address",
+    "resolver": {
+      "kind": "path",
+      "path": "transaction.property_address"
+    },
+    "allowedValuesSource": null,
+    "version": 1,
+    "updatedAt": "2026-09-09T00:00:00.000Z"
+  },
+  {
+    "id": "deal_type",
+    "label": "Deal Type",
     "type": "enum",
     "operators": [
       "eq",
@@ -12,55 +106,579 @@
       "is_not_empty"
     ],
     "valueWidget": "select",
-    "valueLabel": "Primary Type",
+    "valueLabel": "Deal Type",
     "resolver": {
       "kind": "path",
-      "path": "transaction.primary_type"
+      "path": "transaction.deal_type"
     },
     "allowedValuesSource": {
       "type": "static",
       "values": [
-        "sale",
-        "lease",
-        "referral_only"
+        "Lease Landlord",
+        "Both Lease Tenant & Landlord",
+        "Both Purchase & Listing",
+        "BPO",
+        "Other",
+        "Listing",
+        "Referral",
+        "Lease Tenant",
+        "Purchase"
       ]
     },
     "version": 1,
-    "updatedAt": "2026-09-01T02:00:00.000Z"
+    "updatedAt": "2026-09-09T00:00:00.000Z"
   },
   {
-    "id": "new_construction",
-    "label": "New Construction",
+    "id": "overall_gci",
+    "label": "Overall GCI",
+    "type": "number",
+    "operators": [
+      "eq",
+      "neq",
+      "gt",
+      "lt",
+      "gte",
+      "lte",
+      "between",
+      "in",
+      "not_in",
+      "is_empty",
+      "is_not_empty"
+    ],
+    "valueWidget": "number_input",
+    "valueLabel": "Overall GCI ($)",
+    "resolver": {
+      "kind": "path",
+      "path": "transaction.overall_gci"
+    },
+    "allowedValuesSource": null,
+    "version": 1,
+    "updatedAt": "2026-09-09T00:00:00.000Z"
+  },
+  {
+    "id": "participant_type",
+    "label": "Participant Type",
+    "type": "enum",
+    "operators": [
+      "eq",
+      "neq",
+      "in",
+      "not_in",
+      "is_empty",
+      "is_not_empty"
+    ],
+    "valueWidget": "select",
+    "valueLabel": "Participant Type",
+    "resolver": {
+      "kind": "path",
+      "path": "commission_split.type"
+    },
+    "allowedValuesSource": {
+      "type": "static",
+      "values": [
+        "user"
+      ]
+    },
+    "version": 1,
+    "updatedAt": "2026-09-09T00:00:00.000Z"
+  },
+  {
+    "id": "is_internal",
+    "label": "Is Internal",
     "type": "boolean",
     "operators": [
       "eq"
     ],
     "valueWidget": "toggle",
-    "valueLabel": "New Construction",
+    "valueLabel": "Is Internal",
     "resolver": {
       "kind": "path",
-      "path": "transaction.new_construction"
+      "path": "commission_split.is_internal"
     },
     "allowedValuesSource": null,
     "version": 1,
-    "updatedAt": "2026-09-01T02:00:00.000Z"
+    "updatedAt": "2026-09-09T00:00:00.000Z"
   },
   {
-    "id": "personal_deal",
-    "label": "Personal Deal",
+    "id": "brokerage",
+    "label": "Brokerage",
+    "type": "text",
+    "operators": [
+      "eq",
+      "neq",
+      "is_empty",
+      "is_not_empty"
+    ],
+    "valueWidget": "text_input",
+    "valueLabel": "Brokerage",
+    "resolver": {
+      "kind": "path",
+      "path": "commission_split.brokerage"
+    },
+    "allowedValuesSource": null,
+    "version": 1,
+    "updatedAt": "2026-09-09T00:00:00.000Z"
+  },
+  {
+    "id": "is_referral",
+    "label": "Is Referral",
     "type": "boolean",
     "operators": [
       "eq"
     ],
     "valueWidget": "toggle",
-    "valueLabel": "Personal Deal",
+    "valueLabel": "Is Referral",
     "resolver": {
       "kind": "path",
-      "path": "transaction.personal"
+      "path": "commission_split.is_referral"
     },
     "allowedValuesSource": null,
     "version": 1,
-    "updatedAt": "2026-09-01T02:00:00.000Z"
+    "updatedAt": "2026-09-09T00:00:00.000Z"
+  },
+  {
+    "id": "split_guid",
+    "label": "Split GUID",
+    "type": "text",
+    "operators": [
+      "eq",
+      "neq",
+      "is_empty",
+      "is_not_empty"
+    ],
+    "valueWidget": "text_input",
+    "valueLabel": "Split GUID",
+    "resolver": {
+      "kind": "path",
+      "path": "commission_split.guid"
+    },
+    "allowedValuesSource": null,
+    "version": 1,
+    "updatedAt": "2026-09-09T00:00:00.000Z"
+  },
+  {
+    "id": "split_name",
+    "label": "Split Agent Name",
+    "type": "text",
+    "operators": [
+      "eq",
+      "neq",
+      "is_empty",
+      "is_not_empty"
+    ],
+    "valueWidget": "text_input",
+    "valueLabel": "Split Agent Name",
+    "resolver": {
+      "kind": "path",
+      "path": "commission_split.name"
+    },
+    "allowedValuesSource": null,
+    "version": 1,
+    "updatedAt": "2026-09-09T00:00:00.000Z"
+  },
+  {
+    "id": "split_email",
+    "label": "Split Agent Email",
+    "type": "text",
+    "operators": [
+      "eq",
+      "neq",
+      "is_empty",
+      "is_not_empty"
+    ],
+    "valueWidget": "text_input",
+    "valueLabel": "Split Agent Email",
+    "resolver": {
+      "kind": "path",
+      "path": "commission_split.email"
+    },
+    "allowedValuesSource": null,
+    "version": 1,
+    "updatedAt": "2026-09-09T00:00:00.000Z"
+  },
+  {
+    "id": "side",
+    "label": "Side",
+    "type": "enum",
+    "operators": [
+      "eq",
+      "neq",
+      "in",
+      "not_in",
+      "is_empty",
+      "is_not_empty"
+    ],
+    "valueWidget": "select",
+    "valueLabel": "Side",
+    "resolver": {
+      "kind": "path",
+      "path": "commission_split.side"
+    },
+    "allowedValuesSource": {
+      "type": "static",
+      "values": [
+        "listing",
+        "sale"
+      ]
+    },
+    "version": 1,
+    "updatedAt": "2026-09-09T00:00:00.000Z"
+  },
+  {
+    "id": "commission_percent",
+    "label": "Commission Percent",
+    "type": "number",
+    "operators": [
+      "eq",
+      "neq",
+      "gt",
+      "lt",
+      "gte",
+      "lte",
+      "between",
+      "in",
+      "not_in",
+      "is_empty",
+      "is_not_empty"
+    ],
+    "valueWidget": "number_input",
+    "valueLabel": "Commission Percent (%)",
+    "resolver": {
+      "kind": "path",
+      "path": "commission_split.commission_percent"
+    },
+    "allowedValuesSource": null,
+    "version": 1,
+    "updatedAt": "2026-09-09T00:00:00.000Z"
+  },
+  {
+    "id": "commission_amount",
+    "label": "Commission Amount",
+    "type": "number",
+    "operators": [
+      "eq",
+      "neq",
+      "gt",
+      "lt",
+      "gte",
+      "lte",
+      "between",
+      "in",
+      "not_in",
+      "is_empty",
+      "is_not_empty"
+    ],
+    "valueWidget": "number_input",
+    "valueLabel": "Commission Amount ($)",
+    "resolver": {
+      "kind": "path",
+      "path": "commission_split.commission_amount"
+    },
+    "allowedValuesSource": null,
+    "version": 1,
+    "updatedAt": "2026-09-09T00:00:00.000Z"
+  },
+  {
+    "id": "cap_position",
+    "label": "Cap Position",
+    "type": "enum",
+    "operators": [
+      "eq",
+      "neq",
+      "in",
+      "not_in",
+      "is_empty",
+      "is_not_empty"
+    ],
+    "valueWidget": "select",
+    "valueLabel": "Cap Position",
+    "resolver": {
+      "kind": "path",
+      "path": "agent.cap_position"
+    },
+    "allowedValuesSource": {
+      "type": "static",
+      "values": [
+        "pre_cap",
+        "capped"
+      ]
+    },
+    "version": 1,
+    "updatedAt": "2026-09-09T00:00:00.000Z"
+  },
+  {
+    "id": "commission_plan",
+    "label": "Commission Plan",
+    "type": "enum",
+    "operators": [
+      "eq",
+      "neq",
+      "in",
+      "not_in",
+      "is_empty",
+      "is_not_empty"
+    ],
+    "valueWidget": "select",
+    "valueLabel": "Commission Plan",
+    "resolver": {
+      "kind": "path",
+      "path": "agent.commission_plan"
+    },
+    "allowedValuesSource": {
+      "type": "static",
+      "values": [
+        "standard",
+        "half_cap",
+        "domestic_team",
+        "lfro",
+        "marketing_collective"
+      ]
+    },
+    "version": 1,
+    "updatedAt": "2026-09-09T00:00:00.000Z"
+  },
+  {
+    "id": "commission_progress",
+    "label": "Commission Progress (Cap Accumulation)",
+    "type": "number",
+    "operators": [
+      "eq",
+      "neq",
+      "gt",
+      "lt",
+      "gte",
+      "lte",
+      "between",
+      "in",
+      "not_in",
+      "is_empty",
+      "is_not_empty"
+    ],
+    "valueWidget": "number_input",
+    "valueLabel": "Commission Progress ($)",
+    "resolver": {
+      "kind": "path",
+      "path": "agent.cap_accumulation"
+    },
+    "allowedValuesSource": null,
+    "version": 1,
+    "updatedAt": "2026-09-09T00:00:00.000Z"
+  },
+  {
+    "id": "tech_fee_progress",
+    "label": "Tech Fee Progress (Tech Fee Bucket)",
+    "type": "number",
+    "operators": [
+      "eq",
+      "neq",
+      "gt",
+      "lt",
+      "gte",
+      "lte",
+      "between",
+      "in",
+      "not_in",
+      "is_empty",
+      "is_not_empty"
+    ],
+    "valueWidget": "number_input",
+    "valueLabel": "Tech Fee Progress ($)",
+    "resolver": {
+      "kind": "path",
+      "path": "agent.tech_fee_bucket"
+    },
+    "allowedValuesSource": null,
+    "version": 1,
+    "updatedAt": "2026-09-09T00:00:00.000Z"
+  },
+  {
+    "id": "capped_fee_progress",
+    "label": "Capped-Status Fee Progress (Post-Cap Bucket)",
+    "type": "number",
+    "operators": [
+      "eq",
+      "neq",
+      "gt",
+      "lt",
+      "gte",
+      "lte",
+      "between",
+      "in",
+      "not_in",
+      "is_empty",
+      "is_not_empty"
+    ],
+    "valueWidget": "number_input",
+    "valueLabel": "Capped Fee Progress ($)",
+    "resolver": {
+      "kind": "path",
+      "path": "agent.post_cap_bucket"
+    },
+    "allowedValuesSource": null,
+    "version": 1,
+    "updatedAt": "2026-09-09T00:00:00.000Z"
+  },
+  {
+    "id": "production_progress",
+    "label": "Production Progress",
+    "type": "number",
+    "operators": [
+      "eq",
+      "neq",
+      "gt",
+      "lt",
+      "gte",
+      "lte",
+      "between",
+      "in",
+      "not_in",
+      "is_empty",
+      "is_not_empty"
+    ],
+    "valueWidget": "number_input",
+    "valueLabel": "Production Progress ($)",
+    "resolver": {
+      "kind": "path",
+      "path": "agent.production"
+    },
+    "allowedValuesSource": null,
+    "version": 1,
+    "updatedAt": "2026-09-09T00:00:00.000Z"
+  },
+  {
+    "id": "graduation_sale_count",
+    "label": "Graduation Sale Count",
+    "type": "number",
+    "operators": [
+      "eq",
+      "neq",
+      "gt",
+      "lt",
+      "gte",
+      "lte",
+      "between",
+      "in",
+      "not_in",
+      "is_empty",
+      "is_not_empty"
+    ],
+    "valueWidget": "number_input",
+    "valueLabel": "Graduation Sale Count",
+    "resolver": {
+      "kind": "path",
+      "path": "agent.graduation_sale_count"
+    },
+    "allowedValuesSource": null,
+    "version": 1,
+    "updatedAt": "2026-09-09T00:00:00.000Z"
+  },
+  {
+    "id": "graduation_lease_count",
+    "label": "Graduation Lease Count",
+    "type": "number",
+    "operators": [
+      "eq",
+      "neq",
+      "gt",
+      "lt",
+      "gte",
+      "lte",
+      "between",
+      "in",
+      "not_in",
+      "is_empty",
+      "is_not_empty"
+    ],
+    "valueWidget": "number_input",
+    "valueLabel": "Graduation Lease Count",
+    "resolver": {
+      "kind": "path",
+      "path": "agent.graduation_lease_count"
+    },
+    "allowedValuesSource": null,
+    "version": 1,
+    "updatedAt": "2026-09-09T00:00:00.000Z"
+  },
+  {
+    "id": "personal_deal_count",
+    "label": "Personal-Deal Count (This Year)",
+    "type": "number",
+    "operators": [
+      "eq",
+      "neq",
+      "gt",
+      "lt",
+      "gte",
+      "lte",
+      "between",
+      "in",
+      "not_in",
+      "is_empty",
+      "is_not_empty"
+    ],
+    "valueWidget": "number_input",
+    "valueLabel": "Personal-Deal Count (This Year)",
+    "resolver": {
+      "kind": "path",
+      "path": "agent.personal_deal_count"
+    },
+    "allowedValuesSource": null,
+    "version": 1,
+    "updatedAt": "2026-09-09T00:00:00.000Z"
+  },
+  {
+    "id": "risk_fee_progress",
+    "label": "Risk Fee Progress",
+    "type": "number",
+    "operators": [
+      "eq",
+      "neq",
+      "gt",
+      "lt",
+      "gte",
+      "lte",
+      "between",
+      "in",
+      "not_in",
+      "is_empty",
+      "is_not_empty"
+    ],
+    "valueWidget": "number_input",
+    "valueLabel": "Risk Fee Progress ($)",
+    "resolver": {
+      "kind": "path",
+      "path": "agent.risk_fee_progress"
+    },
+    "allowedValuesSource": null,
+    "version": 1,
+    "updatedAt": "2026-09-09T00:00:00.000Z"
+  },
+  {
+    "id": "portion",
+    "label": "Portion",
+    "type": "enum",
+    "operators": [
+      "eq",
+      "neq",
+      "in",
+      "not_in",
+      "is_empty",
+      "is_not_empty"
+    ],
+    "valueWidget": "select",
+    "valueLabel": "Portion",
+    "resolver": {
+      "kind": "path",
+      "path": "transaction.portion"
+    },
+    "allowedValuesSource": {
+      "type": "static",
+      "values": [
+        "pass_through"
+      ]
+    },
+    "version": 1,
+    "updatedAt": "2026-09-09T00:00:00.000Z"
   },
   {
     "id": "source",
@@ -88,11 +706,12 @@
         "kairos",
         "consolidated",
         "kbb",
-        "none"
+        "none",
+        "SOI"
       ]
     },
     "version": 1,
-    "updatedAt": "2026-09-01T02:00:00.000Z"
+    "updatedAt": "2026-09-09T00:00:00.000Z"
   },
   {
     "id": "deal_subtype",
@@ -123,94 +742,8 @@
       ]
     },
     "version": 1,
-    "updatedAt": "2026-09-01T02:00:00.000Z"
-  },
-  {
-    "id": "cap_position",
-    "label": "Cap Position",
-    "type": "enum",
-    "operators": [
-      "eq",
-      "neq",
-      "in",
-      "not_in",
-      "is_empty",
-      "is_not_empty"
-    ],
-    "valueWidget": "select",
-    "valueLabel": "Cap Position",
-    "resolver": {
-      "kind": "path",
-      "path": "agent.cap_position"
-    },
-    "allowedValuesSource": {
-      "type": "static",
-      "values": [
-        "pre_cap",
-        "capped"
-      ]
-    },
-    "version": 1,
-    "updatedAt": "2026-09-01T02:00:00.000Z"
-  },
-  {
-    "id": "plan",
-    "label": "Plan",
-    "type": "enum",
-    "operators": [
-      "eq",
-      "neq",
-      "in",
-      "not_in",
-      "is_empty",
-      "is_not_empty"
-    ],
-    "valueWidget": "select",
-    "valueLabel": "Plan",
-    "resolver": {
-      "kind": "path",
-      "path": "agent.plan"
-    },
-    "allowedValuesSource": {
-      "type": "static",
-      "values": [
-        "standard",
-        "half_cap",
-        "domestic_team",
-        "lfro",
-        "marketing_collective"
-      ]
-    },
-    "version": 1,
-    "updatedAt": "2026-09-01T02:00:00.000Z"
-  },
-  {
-    "id": "personal_allowance",
-    "label": "Personal Allowance",
-    "type": "enum",
-    "operators": [
-      "eq",
-      "neq",
-      "in",
-      "not_in",
-      "is_empty",
-      "is_not_empty"
-    ],
-    "valueWidget": "select",
-    "valueLabel": "Personal Allowance",
-    "resolver": {
-      "kind": "path",
-      "path": "agent.personal_allowance"
-    },
-    "allowedValuesSource": {
-      "type": "static",
-      "values": [
-        "active",
-        "not_active"
-      ]
-    },
-    "version": 1,
-    "updatedAt": "2026-09-01T02:00:00.000Z"
+    "updatedAt": "2026-09-09T00:00:00.000Z",
+    "note": "Not confirmed this is actually populated by SkySlope yet — verify before relying on it."
   },
   {
     "id": "state",
@@ -238,63 +771,24 @@
       ]
     },
     "version": 1,
-    "updatedAt": "2026-09-01T02:00:00.000Z"
+    "updatedAt": "2026-09-09T00:00:00.000Z"
   },
   {
-    "id": "role",
-    "label": "Role",
-    "type": "enum",
+    "id": "personal_deal",
+    "label": "Personal Deal",
+    "type": "boolean",
     "operators": [
-      "eq",
-      "neq",
-      "in",
-      "not_in",
-      "is_empty",
-      "is_not_empty"
+      "eq"
     ],
-    "valueWidget": "select",
-    "valueLabel": "Role",
+    "valueWidget": "toggle",
+    "valueLabel": "Personal Deal",
     "resolver": {
       "kind": "path",
-      "path": "transaction.role"
-    },
-    "allowedValuesSource": {
-      "type": "static",
-      "values": [
-        "listing",
-        "buying",
-        "other"
-      ]
-    },
-    "version": 1,
-    "updatedAt": "2026-09-01T02:00:00.000Z"
-  },
-  {
-    "id": "gci",
-    "label": "GCI",
-    "type": "number",
-    "operators": [
-      "eq",
-      "neq",
-      "gt",
-      "lt",
-      "gte",
-      "lte",
-      "between",
-      "in",
-      "not_in",
-      "is_empty",
-      "is_not_empty"
-    ],
-    "valueWidget": "number_input",
-    "valueLabel": "GCI ($)",
-    "resolver": {
-      "kind": "path",
-      "path": "transaction.gci"
+      "path": "transaction.personal_deal"
     },
     "allowedValuesSource": null,
     "version": 1,
-    "updatedAt": "2026-09-01T02:00:00.000Z"
+    "updatedAt": "2026-09-09T00:00:00.000Z"
   },
   {
     "id": "program",
@@ -325,66 +819,8 @@
       ]
     },
     "version": 1,
-    "updatedAt": "2026-09-01T02:00:00.000Z"
-  },
-  {
-    "id": "direction",
-    "label": "Referral Direction",
-    "type": "enum",
-    "operators": [
-      "eq",
-      "neq",
-      "in",
-      "not_in",
-      "is_empty",
-      "is_not_empty"
-    ],
-    "valueWidget": "select",
-    "valueLabel": "Direction",
-    "resolver": {
-      "kind": "path",
-      "path": "transaction.direction"
-    },
-    "allowedValuesSource": {
-      "type": "static",
-      "values": [
-        "inbound",
-        "outbound"
-      ]
-    },
-    "version": 1,
-    "updatedAt": "2026-09-01T02:00:00.000Z"
-  },
-  {
-    "id": "milestone",
-    "label": "Milestone",
-    "type": "enum",
-    "operators": [
-      "eq",
-      "neq",
-      "in",
-      "not_in",
-      "is_empty",
-      "is_not_empty"
-    ],
-    "valueWidget": "select",
-    "valueLabel": "Milestone",
-    "resolver": {
-      "kind": "path",
-      "path": "agent.milestone"
-    },
-    "allowedValuesSource": {
-      "type": "static",
-      "values": [
-        "graduated",
-        "first_sale",
-        "capped",
-        "production",
-        "attraction"
-      ]
-    },
-    "version": 1,
-    "updatedAt": "2026-09-01T02:00:00.000Z"
+    "updatedAt": "2026-09-09T00:00:00.000Z",
+    "note": "Not confirmed this is actually populated by SkySlope yet — verify before relying on it."
   },
   {
     "id": "decision",
@@ -399,7 +835,7 @@
       "is_not_empty"
     ],
     "valueWidget": "select",
-    "valueLabel": "Decision",
+    "valueLabel": "Recorded Decision",
     "resolver": {
       "kind": "path",
       "path": "transaction.decision"
@@ -411,34 +847,82 @@
       ]
     },
     "version": 1,
-    "updatedAt": "2026-09-01T02:00:00.000Z"
+    "updatedAt": "2026-09-09T00:00:00.000Z",
+    "note": "Not confirmed this is actually populated by SkySlope yet — verify before relying on it."
   },
   {
-    "id": "participants_on_side",
-    "label": "Participants on Side",
-    "type": "number",
+    "id": "direction",
+    "label": "Referral Direction",
+    "type": "enum",
     "operators": [
       "eq",
       "neq",
-      "gt",
-      "lt",
-      "gte",
-      "lte",
-      "between",
       "in",
       "not_in",
       "is_empty",
       "is_not_empty"
     ],
-    "valueWidget": "number_input",
-    "valueLabel": "Participants on Side",
+    "valueWidget": "select",
+    "valueLabel": "Referral Direction",
     "resolver": {
       "kind": "path",
-      "path": "transaction.participants_on_side"
+      "path": "transaction.direction"
+    },
+    "allowedValuesSource": {
+      "type": "static",
+      "values": [
+        "inbound",
+        "outbound"
+      ]
+    },
+    "version": 1,
+    "updatedAt": "2026-09-09T00:00:00.000Z",
+    "note": "Not confirmed this is actually populated by SkySlope yet — verify before relying on it."
+  },
+  {
+    "id": "personal_allowance",
+    "label": "Personal Allowance",
+    "type": "enum",
+    "operators": [
+      "eq",
+      "neq",
+      "in",
+      "not_in",
+      "is_empty",
+      "is_not_empty"
+    ],
+    "valueWidget": "select",
+    "valueLabel": "Personal Allowance",
+    "resolver": {
+      "kind": "path",
+      "path": "agent.personal_allowance"
+    },
+    "allowedValuesSource": {
+      "type": "static",
+      "values": [
+        "active",
+        "not_active"
+      ]
+    },
+    "version": 1,
+    "updatedAt": "2026-09-09T00:00:00.000Z"
+  },
+  {
+    "id": "graduation_status",
+    "label": "Graduation Status",
+    "type": "boolean",
+    "operators": [
+      "eq"
+    ],
+    "valueWidget": "toggle",
+    "valueLabel": "Graduation Status",
+    "resolver": {
+      "kind": "path",
+      "path": "agent.graduation_status"
     },
     "allowedValuesSource": null,
     "version": 1,
-    "updatedAt": "2026-09-01T02:00:00.000Z"
+    "updatedAt": "2026-09-09T00:00:00.000Z"
   },
   {
     "id": "primary_license_state",
@@ -453,7 +937,7 @@
       "is_not_empty"
     ],
     "valueWidget": "select",
-    "valueLabel": "License State",
+    "valueLabel": "Primary License State",
     "resolver": {
       "kind": "path",
       "path": "agent.primary_license_state"
@@ -461,15 +945,16 @@
     "allowedValuesSource": {
       "type": "static",
       "values": [
-        "WA"
+        "WA",
+        "AZ"
       ]
     },
     "version": 1,
-    "updatedAt": "2026-09-01T02:00:00.000Z"
+    "updatedAt": "2026-09-09T00:00:00.000Z"
   },
   {
-    "id": "portion",
-    "label": "Portion",
+    "id": "agent_team",
+    "label": "Agent Team",
     "type": "enum",
     "operators": [
       "eq",
@@ -480,46 +965,19 @@
       "is_not_empty"
     ],
     "valueWidget": "select",
-    "valueLabel": "Portion",
+    "valueLabel": "Agent Team",
     "resolver": {
       "kind": "path",
-      "path": "transaction.portion"
+      "path": "agent.team_id"
     },
     "allowedValuesSource": {
-      "type": "static",
-      "values": [
-        "pass_through"
-      ]
+      "type": "table_ref",
+      "table": "teams",
+      "valueField": "id",
+      "labelField": "name"
     },
     "version": 1,
-    "updatedAt": "2026-09-01T02:00:00.000Z"
-  },
-  {
-    "id": "personal_deals_this_year",
-    "label": "Personal Deals (This Year)",
-    "type": "number",
-    "operators": [
-      "eq",
-      "neq",
-      "gt",
-      "lt",
-      "gte",
-      "lte",
-      "between",
-      "in",
-      "not_in",
-      "is_empty",
-      "is_not_empty"
-    ],
-    "valueWidget": "number_input",
-    "valueLabel": "Count",
-    "resolver": {
-      "kind": "path",
-      "path": "agent.deal_counts.personal_this_year"
-    },
-    "allowedValuesSource": null,
-    "version": 1,
-    "updatedAt": "2026-09-01T02:00:00.000Z"
+    "updatedAt": "2026-09-09T00:00:00.000Z"
   },
   {
     "id": "team",
@@ -546,34 +1004,62 @@
       "labelField": "name"
     },
     "version": 1,
-    "updatedAt": "2026-09-01T02:00:00.000Z"
+    "updatedAt": "2026-09-09T00:00:00.000Z"
   },
   {
-    "id": "agent",
-    "label": "Agent",
-    "type": "enum",
+    "id": "team_commission_progress",
+    "label": "Team Commission Progress (Cap Accumulation)",
+    "type": "number",
     "operators": [
       "eq",
       "neq",
+      "gt",
+      "lt",
+      "gte",
+      "lte",
+      "between",
       "in",
       "not_in",
       "is_empty",
       "is_not_empty"
     ],
-    "valueWidget": "select",
-    "valueLabel": "Agent",
+    "valueWidget": "number_input",
+    "valueLabel": "Team Commission Progress ($)",
     "resolver": {
       "kind": "path",
-      "path": "agent.id"
+      "path": "team.cap_accumulation"
     },
-    "allowedValuesSource": {
-      "type": "table_ref",
-      "table": "agents",
-      "valueField": "id",
-      "labelField": "name"
-    },
+    "allowedValuesSource": null,
     "version": 1,
-    "updatedAt": "2026-09-01T02:00:00.000Z"
+    "updatedAt": "2026-09-09T00:00:00.000Z"
+  },
+  {
+    "id": "side_percentage",
+    "label": "Side Percentage",
+    "type": "number",
+    "operators": [
+      "eq",
+      "neq",
+      "gt",
+      "lt",
+      "gte",
+      "lte",
+      "between",
+      "in",
+      "not_in",
+      "is_empty",
+      "is_not_empty"
+    ],
+    "valueWidget": "number_input",
+    "valueLabel": "Side Percentage (%)",
+    "resolver": {
+      "kind": "path",
+      "path": "commission_split.side_percentage"
+    },
+    "allowedValuesSource": null,
+    "note": "Each commission_split's share of the WHOLE TRANSACTION's flat-fee split pool (sums to 100% across every split, not per side) — deliberately deviates from the spec, which has risk fee at 00 total for a 2-sided deal via per-side scoping. Decided 2026-09-10: risk fee and delinquency fee both total a fixed per-transaction amount (0 / 50), divided by this.",
+    "version": 1,
+    "updatedAt": "2026-09-10T00:00:00.000Z"
   },
   {
     "id": "referral_agreement",
@@ -599,34 +1085,36 @@
       "path": "transaction.referral_agreement"
     },
     "allowedValuesSource": null,
+    "note": "",
     "version": 1,
-    "updatedAt": "2026-09-03T00:00:00.000Z"
+    "updatedAt": "2026-09-10T00:00:00.000Z"
   },
   {
-    "id": "side_percentage",
-    "label": "Side Percentage",
-    "type": "number",
+    "id": "portion",
+    "label": "Portion",
+    "type": "enum",
     "operators": [
       "eq",
       "neq",
-      "gt",
-      "lt",
-      "gte",
-      "lte",
-      "between",
       "in",
       "not_in",
       "is_empty",
       "is_not_empty"
     ],
-    "valueWidget": "number_input",
-    "valueLabel": "Side Percentage (%)",
+    "valueWidget": "select",
+    "valueLabel": "Portion",
     "resolver": {
       "kind": "path",
-      "path": "agent.side_percentage"
+      "path": "transaction.portion"
     },
-    "allowedValuesSource": null,
-    "version": 1,
-    "updatedAt": "2026-09-04T00:00:00.000Z"
+    "allowedValuesSource": {
+      "type": "static",
+      "values": [
+        "standard",
+        "pass_through"
+      ]
+    },
+    "version": 2,
+    "updatedAt": "2026-09-10T15:44:53.151Z"
   }
 ]

@@ -9,6 +9,10 @@ const OPERATORS_BY_TYPE = {
   enum: ['eq', 'neq', 'in', 'not_in', 'is_empty', 'is_not_empty'],
   date: ['eq', 'gt', 'lt', 'gte', 'lte', 'between', 'in', 'is_empty', 'is_not_empty'],
   boolean: ['eq'],
+  // Free text (a GUID, a name, an address) — no ordering/range operators,
+  // and no `in`/`not_in`: those render as a fixed chip list elsewhere in
+  // this app, which doesn't fit an open-ended value like a name or address.
+  text: ['eq', 'neq', 'is_empty', 'is_not_empty'],
 };
 
 // Human-readable operator labels (shared with the future condition builder).
@@ -32,6 +36,7 @@ const VALUE_WIDGET_BY_TYPE = {
   enum: 'select',
   date: 'date_picker',
   boolean: 'toggle',
+  text: 'text_input',
 };
 
 const VALUE_WIDGET_LABELS = {
@@ -39,9 +44,10 @@ const VALUE_WIDGET_LABELS = {
   select: 'Select (single/multi decided by operator)',
   date_picker: 'Date picker',
   toggle: 'Boolean toggle',
+  text_input: 'Text input',
 };
 
-const ATTRIBUTE_TYPES = ['number', 'enum', 'date', 'boolean'];
+const ATTRIBUTE_TYPES = ['number', 'enum', 'date', 'boolean', 'text'];
 
 // Resolver root — WHERE a value is read from. Peers, not nested: the real
 // evaluation contract (calculate(facts, progress_snapshot, ..., policy_binding))
@@ -50,12 +56,22 @@ const ATTRIBUTE_TYPES = ['number', 'enum', 'date', 'boolean'];
 // This is also how Rule "scope" (global/plan/overlay/team/agent) collapses
 // into ordinary conditions: an agent- or team-rooted Attribute IS the old
 // scope, expressed as a condition instead of a separate rule property.
-const RESOLVER_ROOTS = ['transaction', 'agent', 'team'];
+//
+// `commission_split` is its own root, separate from `agent` — `agent`
+// means the agent's own enrollment/profile facts (plan, cap_position,
+// milestone — true regardless of which transaction/split you're looking
+// at), while `commission_split` means a fact about ONE commission_splits[]
+// entry on THIS transaction (side, commission_percent, is_referral —
+// varies per split, and a single agent can appear in more than one split,
+// e.g. dual agency). Conflating the two under `agent` was a mistake made
+// once already this session.
+const RESOLVER_ROOTS = ['transaction', 'agent', 'team', 'commission_split'];
 
 const RESOLVER_ROOT_LABELS = {
   transaction: 'Transaction',
   agent: 'Agent',
   team: 'Team',
+  commission_split: 'Commission Split',
 };
 
 // Minimal, deliberately small hardcoded suggestions per root — a few safe,
@@ -67,6 +83,7 @@ const RESOLVER_FIELD_SUGGESTIONS_BY_ROOT = {
   transaction: ['amount', 'type', 'date'],
   agent: ['plan', 'status'],
   team: ['id', 'name'],
+  commission_split: ['side', 'commission_amount', 'is_referral'],
 };
 
 // Splits a stored resolver path like "agent.plan" back into
@@ -153,6 +170,10 @@ function buildAttribute(input) {
     valueLabel: input.valueLabel || input.label,
     resolver: { kind: 'path', path: `${input.resolverRoot}.${input.resolverField}` },
     allowedValuesSource: null,
+    // Free-text caveat about the Attribute itself — e.g. "not confirmed
+    // this is actually populated by the source system yet." Purely
+    // informational, never read by conditions/validation.
+    note: input.note || '',
   };
 
   if (type === 'enum') {

@@ -1,0 +1,40 @@
+[
+  {
+    "id": "6933ad39-e886-4053-944b-eb33a5d06528",
+    "guid": "6933ad39-e886-4053-944b-eb33a5d06528",
+    "name": "Rose Melinda Munoz",
+    "cap_position": "capped",
+    "commission_plan": "standard",
+    "graduation_sale_count": null,
+    "graduation_lease_count": null,
+    "personal_deal_count": null,
+    "risk_fee_progress": null,
+    "personal_allowance": "not_active",
+    "graduation_status": true,
+    "primary_license_state": "AZ",
+    "cap_accumulation": 14000,
+    "tech_fee_bucket": 750,
+    "post_cap_bucket": 1750,
+    "production": null,
+    "team_id": null
+  },
+  {
+    "id": "a12c6554-a21d-488c-91b0-7225bfe9c8da",
+    "guid": "a12c6554-a21d-488c-91b0-7225bfe9c8da",
+    "name": "Anakaren Moore",
+    "cap_position": "pre_cap",
+    "commission_plan": "standard",
+    "graduation_sale_count": null,
+    "graduation_lease_count": null,
+    "personal_deal_count": null,
+    "risk_fee_progress": null,
+    "personal_allowance": "not_active",
+    "graduation_status": true,
+    "primary_license_state": "AZ",
+    "cap_accumulation": 1799.24,
+    "tech_fee_bucket": 500,
+    "post_cap_bucket": 0,
+    "production": null,
+    "team_id": null
+  }
+]

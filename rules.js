@@ -117,28 +117,28 @@ const PAYEE_LABELS = {
 // The Economic Model spec's `applies` field, all four values (see
 // economic-model-rule-definition memory) — this is the "firing subject":
 // how many times a Rule fires and whose facts/trackers each firing reads.
-// Two genuinely different mechanisms, easy to conflate (a mistake made
-// once already this session — see CLAUDE.md/memory once written up):
 //
 //   - per_transaction / per_side: the Rule's amount is computed ONCE (for
-//     the whole deal, or once per side), then that ONE result is optionally
-//     divided among people who share it — that's what `split` is for.
-//     Real spec example: Risk Fee is per-side ($50/side), and split by-side-%
-//     divides one side's $50 among its own co-agents if there's more than
-//     one (e.g. a 70/30 team side -> $35/$15). `split` is only meaningful
-//     for these two `applies` values.
-//   - per_agent_side / per_distinct_agent: the Rule's ENTIRE amount formula
-//     runs independently, once per firing — there is no shared total to
-//     divide, because there was never one number to begin with. Each
-//     firing resolves its own agent-scoped base (e.g. `agent_gci_share`),
-//     so `split` doesn't apply here at all. The two values differ in what
-//     counts as "once": per_agent_side fires once per (agent, side) pair —
-//     a dual-agency agent (both sides of one deal) gets TWO independent
-//     firings/amounts. per_distinct_agent fires once per PERSON regardless
-//     of how many sides they're on — dual agency gets ONE firing. Real
-//     spec example: Technology Fee is per-distinct-agent (dual agency pays
-//     one installment, not two) — Company Dollar is per-agent-side (each
-//     side's own share runs its own ladder).
+//     the whole deal, or once per side), then that ONE result is divided
+//     among people who share it — `split` here means "slice a SHARED
+//     total."
+//   - per_agent_side: fires once per (agent, side) pair — a dual-agency
+//     agent (both sides of one deal) gets TWO independent firings. Each
+//     firing already resolves its own base (e.g. `commission_amount`), so
+//     there's no shared total — but `split` is still meaningful here in a
+//     DIFFERENT sense: scaling THIS firing's own independently-computed
+//     amount by THIS firing's own percentage fact. Real example: Risk Fee
+//     is flat $50 per firing, scaled by that split's own `side_percentage`
+//     (a given fact, not computed) — $50x50%/$50x50%/$50x100% = $25/$25/$50,
+//     landing on the same $100 total as the spec's own per-side/split-
+//     by-side-% worked example, without needing any cross-split
+//     aggregation. (Corrected 2026-09-10 — `per_agent_side` was originally
+//     excluded from split entirely, which silently broke Risk Fee: the
+//     UI didn't display its split, and re-saving the rule via the form
+//     would have wiped it back to 'none'.)
+//   - per_distinct_agent: fires once per PERSON regardless of how many
+//     sides they're on — dual agency gets ONE firing. No split use case
+//     yet — not included in APPLIES_ALLOWING_SPLIT until one exists.
 //
 // NOTE: this describes intent only. There is no evaluation engine yet
 // (see CLAUDE.md Open items) — nothing actually fires a rule multiple
@@ -153,15 +153,15 @@ const APPLIES_LABELS = {
   per_distinct_agent: 'Once per distinct agent (dual agency = 1 firing)',
 };
 
-// Only meaningful when applies is 'per_transaction' or 'per_side' — see
-// note above. Ignored/cleared for 'per_agent_side'/'per_distinct_agent'.
+// per_transaction/per_side: split slices a SHARED total. per_agent_side:
+// split scales THIS firing's own amount by THIS firing's own percentage
+// fact (see note above — added 2026-09-10 for Risk Fee).
+const APPLIES_ALLOWING_SPLIT = ['per_transaction', 'per_side', 'per_agent_side'];
 const SPLIT_OPTIONS = ['none', 'by_percent_attribute'];
 const SPLIT_LABELS = {
   none: 'No split',
   by_percent_attribute: 'Divide by a percentage Attribute',
 };
-
-const APPLIES_ALLOWING_SPLIT = ['per_transaction', 'per_side'];
 
 function emptyAmount(form) {
   switch (form) {
@@ -182,7 +182,13 @@ function emptyAmount(form) {
     case 'ladder':
       return { form: 'ladder', tracker: TRACKER_OPTIONS[0], rateType: 'percent', baseAttributeId: '', rows: [{ upTo: null, value: 0 }] };
     case 'capped_by':
-      return { form: 'capped_by', amount: emptyAmount('flat'), tracker: TRACKER_OPTIONS[0] };
+      // progressAttributeId + target are what actually let a future engine
+      // compute "shrink to fit remaining room" (e.g. Tech Fee Bucket: agent
+      // at $700 of a $750 target owes only $50 more, not the full $250) —
+      // `tracker` alone was just a label, with nothing wired to a real
+      // current-progress value or the tracker's target number. Added
+      // 2026-09-10 once a rule (technology_fee) actually needed it.
+      return { form: 'capped_by', amount: emptyAmount('flat'), tracker: TRACKER_OPTIONS[0], progressAttributeId: '', target: 0 };
     case 'from_facts':
       return { form: 'from_facts', attributeId: '' };
     default:
@@ -227,13 +233,26 @@ function validateBranches(branches, attributesById) {
   return null;
 }
 
+// Money is plain dollars everywhere now, NOT integer cents — reversing
+// this app's earlier "money is integer cents" convention. Real fact data
+// (commission_amount, overall_gci, sale_price, listing_price, and by the
+// same logic every tracker-progress Attribute) arrives as plain dollar
+// numbers (e.g. the sample payload's `"commission_amount": 3870` means
+// $3,870, not $38.70) — a rate()/ladder() computed off one of those bases
+// naturally produces a dollar-scaled result, so any flat amount compared
+// against it (via max/min) or any ladder tier boundary compared against a
+// tracker's dollar-denominated progress MUST also be dollar-scaled, or the
+// comparison silently picks the wrong branch. Field name `cents` on
+// amount objects is kept as-is (avoids a wider rename) but now just holds
+// a plain dollar number — these two functions are the one place that
+// used to do the ×100/÷100 conversion; they're now pass-throughs.
 function dollarsToCents(dollarsStr) {
   const n = parseFloat(dollarsStr);
-  return Number.isFinite(n) ? Math.round(n * 100) : 0;
+  return Number.isFinite(n) ? n : 0;
 }
 
 function centsToDollars(cents) {
-  return (Number(cents || 0) / 100).toFixed(2);
+  return Number(cents || 0).toFixed(2);
 }
 
 function buildRule(input) {
@@ -315,6 +334,9 @@ function validateAmount(amount, attributesById) {
     }
     case 'capped_by': {
       if (!TRACKER_OPTIONS.includes(amount.tracker)) return 'Choose a tracker.';
+      const progress = attributesById[amount.progressAttributeId];
+      if (!progress || progress.type !== 'number') return 'Choose a number Attribute holding current progress.';
+      if (!Number.isFinite(amount.target)) return 'Enter the tracker\'s target.';
       return validateAmount(amount.amount, attributesById);
     }
     case 'from_facts':
