@@ -1116,5 +1116,154 @@
     },
     "version": 2,
     "updatedAt": "2026-09-10T15:44:53.151Z"
+  },
+  {
+    "id": "primary_license_state",
+    "label": "Primary License State",
+    "type": "enum",
+    "operators": [
+      "eq",
+      "neq",
+      "in",
+      "not_in",
+      "is_empty",
+      "is_not_empty"
+    ],
+    "valueWidget": "select",
+    "valueLabel": "Primary License State",
+    "resolver": {
+      "kind": "path",
+      "path": "agent.primary_license_state"
+    },
+    "allowedValuesSource": {
+      "type": "static",
+      "values": [
+        "WA",
+        "AZ",
+        "NV"
+      ]
+    },
+    "version": 2,
+    "updatedAt": "2026-09-15T14:23:03.475Z"
+  },
+  {
+    "id": "source",
+    "label": "Source",
+    "type": "enum",
+    "operators": [
+      "eq",
+      "neq",
+      "in",
+      "not_in",
+      "is_empty",
+      "is_not_empty"
+    ],
+    "valueWidget": "select",
+    "valueLabel": "Source",
+    "resolver": {
+      "kind": "path",
+      "path": "transaction.source"
+    },
+    "allowedValuesSource": {
+      "type": "static",
+      "values": [
+        "inbound_referral",
+        "roa_leads",
+        "kairos",
+        "consolidated",
+        "kbb",
+        "none",
+        "SOI",
+        "Personal Referral"
+      ]
+    },
+    "version": 2,
+    "updatedAt": "2026-09-15T14:23:03.479Z"
+  },
+  {
+    "id": "listing_commission_percent",
+    "label": "Listing Commission Percent",
+    "type": "number",
+    "operators": [
+      "eq",
+      "neq",
+      "gt",
+      "lt",
+      "gte",
+      "lte",
+      "between",
+      "in",
+      "not_in",
+      "is_empty",
+      "is_not_empty"
+    ],
+    "valueWidget": "number_input",
+    "valueLabel": "Listing Commission Percent",
+    "resolver": {
+      "kind": "path",
+      "path": "transaction.listing_commission_percent"
+    },
+    "allowedValuesSource": null,
+    "note": "",
+    "version": 1,
+    "updatedAt": "2026-09-15T14:23:39.393Z"
+  },
+  {
+    "id": "sale_commission_percent",
+    "label": "Sale Commission Percent",
+    "type": "number",
+    "operators": [
+      "eq",
+      "neq",
+      "gt",
+      "lt",
+      "gte",
+      "lte",
+      "between",
+      "in",
+      "not_in",
+      "is_empty",
+      "is_not_empty"
+    ],
+    "valueWidget": "number_input",
+    "valueLabel": "Sale Commission Percent",
+    "resolver": {
+      "kind": "path",
+      "path": "transaction.sale_commission_percent"
+    },
+    "allowedValuesSource": null,
+    "note": "Sample payload had this field spelled 'sale_commission_perent' (typo) — corrected here; verify against the real SkySlope field name.",
+    "version": 1,
+    "updatedAt": "2026-09-15T14:23:39.393Z"
+  },
+  {
+    "id": "primary_license_state",
+    "label": "Primary License State",
+    "type": "enum",
+    "operators": [
+      "eq",
+      "neq",
+      "in",
+      "not_in",
+      "is_empty",
+      "is_not_empty"
+    ],
+    "valueWidget": "select",
+    "valueLabel": "Primary License State",
+    "resolver": {
+      "kind": "path",
+      "path": "agent.primary_license_state"
+    },
+    "allowedValuesSource": {
+      "type": "static",
+      "values": [
+        "WA",
+        "AZ",
+        "NV",
+        "GA"
+      ]
+    },
+    "version": 3,
+    "updatedAt": "2026-09-15T14:36:10.908Z"
   }
 ]

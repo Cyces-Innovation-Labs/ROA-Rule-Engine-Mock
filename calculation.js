@@ -177,19 +177,81 @@ function resolveBranchAmount(branches, attributesById, ctx) {
   return { branchIndex: -1, rawAmount: null };
 }
 
-// per_transaction/per_side: split slices a SHARED total (computed once,
-// then scaled per participant — see buildFirings, which already produces
-// one firing per participant in that case). per_agent_side: split scales
-// THIS firing's own independently-computed amount by THIS firing's own
-// percentage fact. Both reduce to the same formula here because
-// buildFirings has already put the right single split into `ctx` either
-// way — see rules.js's APPLIES_ALLOWING_SPLIT comment for the underlying
-// design distinction.
-function applySplit(rule, rawAmount, attributesById, ctx) {
-  if (rule.split !== 'by_percent_attribute' || rawAmount == null) return rawAmount;
-  const pct = readNumberFact(rule.splitAttributeId, attributesById, ctx);
-  if (pct == null) return null;
-  return rawAmount * (pct / 100);
+// `by_percent_attribute` (ABSOLUTE / uncapped-but-never-exceeds) has TWO
+// variants depending on what the group represents — see the two functions
+// below. `divide_by_percent_attribute` (splitSharedAmount, further down)
+// is a single, uniform PRESERVING mechanic regardless of applies type:
+// the group's ONE rawAmount is divided among its own splits by their
+// RELATIVE share of the percentage fact, RENORMALIZED to sum to 100%
+// within the group, so the total ALWAYS equals exactly rawAmount.
+//
+// per_side/per_transaction/per_agent_side + by_percent_attribute
+// (scaleEachSplitByOwnPercent): the group represents DIFFERENT people
+// sharing a side/transaction (or, for per_agent_side, always exactly one
+// split). Each split gets rawAmount times ITS OWN raw percentage fact,
+// independently — e.g. Risk Fee's co-listing example: a $50 side shared
+// 70/30 by two DIFFERENT agents pays $35/$15, not $25/$15 — there is no
+// "divide the $50 by headcount first" step, because $50 is already the
+// side's own amount, not one person's amount being spread across sides.
+// Confirmed 2026-09-15 for Risk Fee: a lone eligible participant on a
+// side gets rawAmount times THEIR OWN percentage (can be less than
+// rawAmount), not the full rawAmount.
+//
+// per_distinct_agent + by_percent_attribute (scalePerDistinctAgentAmount):
+// the group represents ONE agent's OWN splits (their own multiple sides).
+// Here rawAmount is a PER-AGENT ceiling (e.g. Capped-Status Fee's $250
+// tier) — first divided EVENLY by how many of their own sides the agent
+// is on, THEN each resulting share is scaled by that side's own
+// percentage. This guarantees the agent's total never exceeds rawAmount
+// (reached only if every one of their sides is at 100%) while still
+// allowing it to be less. Corrected 2026-09-16 — an earlier version
+// scaled the FULL rawAmount per split with no division step, letting an
+// agent's total exceed the tier (e.g. $375 against a $250 cap) whenever
+// their own percentages summed past 100%. User's own framing: "once per
+// distinct agent means the amount mentioned [250], if the agent
+// representing one side then 250 applies based on side percentage... if
+// the agent representing both sides then the 250 split to 125 125 each
+// then applies based on side percentage."
+function scaleEachSplitByOwnPercent(rule, rawAmount, attributesById, ctx) {
+  const splitAttribute = attributesById[rule.splitAttributeId];
+  const ownSplits = ctx.commissionSplits || [];
+  if (!splitAttribute || ownSplits.length === 0) return null;
+  const results = [];
+  for (const split of ownSplits) {
+    const pct = resolveAttributeValue(splitAttribute, { transaction: ctx.transaction, agent: ctx.agent, commissionSplit: split });
+    if (typeof pct !== 'number') return null; // one missing fact voids the whole group — report as one error, not partial results
+    results.push({ split, amount: rawAmount * (pct / 100) });
+  }
+  return results;
+}
+
+function scalePerDistinctAgentAmount(rule, rawAmount, attributesById, ctx) {
+  const splitAttribute = attributesById[rule.splitAttributeId];
+  const ownSplits = ctx.commissionSplits || [];
+  if (!splitAttribute || ownSplits.length === 0) return null;
+  const sharePerSide = rawAmount / ownSplits.length;
+  const results = [];
+  for (const split of ownSplits) {
+    const pct = resolveAttributeValue(splitAttribute, { transaction: ctx.transaction, agent: ctx.agent, commissionSplit: split });
+    if (typeof pct !== 'number') return null;
+    results.push({ split, amount: sharePerSide * (pct / 100) });
+  }
+  return results;
+}
+
+function splitSharedAmount(rule, rawAmount, attributesById, ctx) {
+  const splitAttribute = attributesById[rule.splitAttributeId];
+  const ownSplits = ctx.commissionSplits || [];
+  if (!splitAttribute || ownSplits.length === 0) return null;
+  const raw = [];
+  for (const split of ownSplits) {
+    const pct = resolveAttributeValue(splitAttribute, { transaction: ctx.transaction, agent: null, commissionSplit: split });
+    if (typeof pct !== 'number') return null;
+    raw.push({ split, pct });
+  }
+  const sum = raw.reduce((s, r) => s + r.pct, 0);
+  if (sum <= 0) return null;
+  return raw.map(({ split, pct }) => ({ split, amount: rawAmount * (pct / sum) }));
 }
 
 function round2(n) {
@@ -263,6 +325,28 @@ function buildFirings(rule, transaction, agents) {
   }
 }
 
+// Shared by both apportionment paths (per_distinct_agent and
+// per_transaction/per_side) — each already resolved a set of {split,
+// amount} pairs, this just turns them into line items keyed by their own
+// split's participant info.
+function pushApportionedLines(lineItems, rule, branchIndex, rawAmount, apportioned) {
+  for (const { split, amount } of apportioned) {
+    lineItems.push({
+      ruleId: rule.id,
+      ruleLabel: rule.label,
+      applies: rule.applies,
+      payee: rule.payee,
+      split: rule.split,
+      contributesToTracker: rule.contributesToTracker,
+      waivable: rule.waivable,
+      participant: { guid: split.guid, name: split.name, side: split.side },
+      branchIndex,
+      rawAmount: round2(rawAmount),
+      amount: round2(amount),
+    });
+  }
+}
+
 // --- Per-rule, then whole-transaction evaluation ----------------------------
 
 function evaluateRule(rule, transaction, agents, attributesById) {
@@ -270,7 +354,7 @@ function evaluateRule(rule, transaction, agents, attributesById) {
   const errors = [];
   const firings = buildFirings(rule, transaction, agents);
 
-  for (const firing of firings) {
+  for (let firing of firings) {
     if (firing.agentMissing) {
       errors.push({
         ruleId: rule.id, ruleLabel: rule.label, participant: firing.participant,
@@ -278,7 +362,34 @@ function evaluateRule(rule, transaction, agents, attributesById) {
       });
     }
 
-    if (!evaluateConditionGroup(rule.conditions, attributesById, firing.ctx)) continue; // gate failed — not an error, just doesn't fire
+    // per_transaction/per_side firings have no single agent in ctx (agent:
+    // null) — an agent-rooted condition (e.g. Risk Fee's `commission_plan
+    // neq lfro`) would otherwise always fail (null fails every operator
+    // but is_empty/is_not_empty), silently voiding the whole group. Per the
+    // spec's own rule: "a condition that varies by participant evaluates
+    // per bearer: each split child tests its own bearer's facts" — so test
+    // the group once per split's own agent, keep only the splits that
+    // pass, and use that filtered set for everything downstream (branch
+    // resolution, amount, split). A group where nobody passes just doesn't
+    // fire; a bearer that fails is excluded from the group, not treated as
+    // an error. per_distinct_agent needs this too, not just
+    // per_transaction/per_side: its ctx.agent IS well-defined, but a
+    // commission_split-rooted condition (e.g. Risk Fee's `is_referral eq
+    // false`) has no single ctx.commissionSplit to read when the agent has
+    // more than one split — resolveAttributeValue only auto-sums NUMBER
+    // attributes across multiple splits, so a boolean/enum one resolves to
+    // None and fails every operator, wrongly excluding an agent whose
+    // splits are individually fine.
+    if (rule.applies === 'per_transaction' || rule.applies === 'per_side' || rule.applies === 'per_distinct_agent') {
+      const eligible = (firing.ctx.commissionSplits || []).filter((split) => {
+        const bearerCtx = { transaction, agent: findAgentByGuid(agents, split.guid), commissionSplit: split, commissionSplits: [split] };
+        return evaluateConditionGroup(rule.conditions, attributesById, bearerCtx);
+      });
+      if (eligible.length === 0) continue;
+      firing = { ...firing, ctx: { ...firing.ctx, commissionSplits: eligible } };
+    } else if (!evaluateConditionGroup(rule.conditions, attributesById, firing.ctx)) {
+      continue; // gate failed — not an error, just doesn't fire
+    }
 
     const { branchIndex, rawAmount } = resolveBranchAmount(rule.branches, attributesById, firing.ctx);
     if (branchIndex === -1) {
@@ -290,12 +401,21 @@ function evaluateRule(rule, transaction, agents, attributesById) {
       continue;
     }
 
-    const finalAmount = applySplit(rule, rawAmount, attributesById, firing.ctx);
-    if (finalAmount == null) {
-      errors.push({ ruleId: rule.id, ruleLabel: rule.label, participant: firing.participant, message: 'Amount computed, but the split percentage fact is None.' });
+    if (rule.split === 'by_percent_attribute' || rule.split === 'divide_by_percent_attribute') {
+      const splitFn = rule.split === 'divide_by_percent_attribute'
+        ? splitSharedAmount
+        : (rule.applies === 'per_distinct_agent' ? scalePerDistinctAgentAmount : scaleEachSplitByOwnPercent);
+      const apportioned = splitFn(rule, rawAmount, attributesById, firing.ctx);
+      if (apportioned == null) {
+        errors.push({ ruleId: rule.id, ruleLabel: rule.label, participant: firing.participant, message: "Amount computed, but couldn't apply the split — a side-percentage fact is None." });
+        continue;
+      }
+      pushApportionedLines(lineItems, rule, branchIndex, rawAmount, apportioned);
       continue;
     }
 
+    // split === 'none': one line for this firing exactly as computed, no
+    // per-split expansion.
     lineItems.push({
       ruleId: rule.id,
       ruleLabel: rule.label,
@@ -307,7 +427,7 @@ function evaluateRule(rule, transaction, agents, attributesById) {
       participant: firing.participant,
       branchIndex,
       rawAmount: round2(rawAmount),
-      amount: round2(finalAmount),
+      amount: round2(rawAmount),
     });
   }
 

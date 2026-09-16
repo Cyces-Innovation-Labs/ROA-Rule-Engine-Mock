@@ -137,8 +137,23 @@ const PAYEE_LABELS = {
 //     UI didn't display its split, and re-saving the rule via the form
 //     would have wiped it back to 'none'.)
 //   - per_distinct_agent: fires once per PERSON regardless of how many
-//     sides they're on — dual agency gets ONE firing. No split use case
-//     yet — not included in APPLIES_ALLOWING_SPLIT until one exists.
+//     sides they're on — dual agency gets ONE firing that reads that
+//     person's own tracker/facts ONCE (critical when the amount reads a
+//     shared per-agent tracker, e.g. Capped-Status Fee's post_cap_bucket —
+//     firing per side instead would read/advance that same bucket twice
+//     for one transaction). `split` here means a THIRD thing again: the
+//     ONE per-agent amount is computed once, then apportioned across that
+//     agent's own splits by each split's own percentage fact — never split
+//     evenly, and never left undivided. Real example (Capped-Status Fee,
+//     corrected 2026-09-15 per client/transactions-team review): an agent
+//     capped at Tier 1 ($250) with splits at 30%/40% of the transaction
+//     (their own two sides) owes $250x30%=$75 on one side and
+//     $250x40%=$100 on the other — $175 total, not $250, and not $125/$125.
+//     Two different capped agents sharing one side 70/30 each get their
+//     OWN $250 tier lookup (independent buckets), each scaled by their own
+//     percentage: $175/$75 — same numbers as the worked spec example, but
+//     for a structurally different reason (independent per-agent tiers
+//     scaled down, not one shared side-fee divided by comp share).
 //
 // NOTE: this describes intent only. There is no evaluation engine yet
 // (see CLAUDE.md Open items) — nothing actually fires a rule multiple
@@ -155,12 +170,29 @@ const APPLIES_LABELS = {
 
 // per_transaction/per_side: split slices a SHARED total. per_agent_side:
 // split scales THIS firing's own amount by THIS firing's own percentage
-// fact (see note above — added 2026-09-10 for Risk Fee).
-const APPLIES_ALLOWING_SPLIT = ['per_transaction', 'per_side', 'per_agent_side'];
-const SPLIT_OPTIONS = ['none', 'by_percent_attribute'];
+// fact (added 2026-09-10 for Risk Fee). per_distinct_agent has TWO
+// distinct split mechanics, because "does the total shrink if this agent
+// doesn't own the whole deal" is a real per-rule policy choice, not one
+// universal answer:
+//   - `by_percent_attribute` (Capped-Status Fee): ABSOLUTE — the agent's
+//     total is their tier amount times the SUM of their own percentage
+//     facts, so it genuinely shrinks below the tier amount when another
+//     participant (e.g. a referral split) holds part of the deal.
+//   - `divide_by_percent_attribute` (Risk Fee, added 2026-09-15 per
+//     client/transactions-team clarification): PRESERVING — every
+//     eligible distinct agent owes the FULL flat amount regardless of how
+//     much of the deal they own; their own percentage facts only decide
+//     how that fixed total is allocated across their OWN sides (for
+//     bookkeeping), renormalized so their own splits always sum back to
+//     the full amount. Two distinct agents each owe the full amount
+//     independently — nothing is shared or reduced between them (a
+//     transaction with 2 eligible agents collects 2x the flat amount).
+const APPLIES_ALLOWING_SPLIT = ['per_transaction', 'per_side', 'per_agent_side', 'per_distinct_agent'];
+const SPLIT_OPTIONS = ['none', 'by_percent_attribute', 'divide_by_percent_attribute'];
 const SPLIT_LABELS = {
   none: 'No split',
-  by_percent_attribute: 'Divide by a percentage Attribute',
+  by_percent_attribute: 'Scale by a percentage Attribute (can total less than the full amount)',
+  divide_by_percent_attribute: 'Divide by a percentage Attribute (always totals the full amount)',
 };
 
 function emptyAmount(form) {
@@ -265,7 +297,7 @@ function buildRule(input) {
     payee: input.payee,
     applies: input.applies,
     split: APPLIES_ALLOWING_SPLIT.includes(input.applies) ? input.split : 'none',
-    splitAttributeId: APPLIES_ALLOWING_SPLIT.includes(input.applies) && input.split === 'by_percent_attribute' ? input.splitAttributeId : '',
+    splitAttributeId: APPLIES_ALLOWING_SPLIT.includes(input.applies) && (input.split === 'by_percent_attribute' || input.split === 'divide_by_percent_attribute') ? input.splitAttributeId : '',
     contributesToTracker: input.contributesToTracker || 'none',
   };
 }
@@ -372,7 +404,7 @@ function validateRule(input, existingRules, editingId, attributesById) {
 
   if (APPLIES_ALLOWING_SPLIT.includes(input.applies)) {
     if (!SPLIT_OPTIONS.includes(input.split)) errors.split = 'Choose a split.';
-    if (input.split === 'by_percent_attribute') {
+    if (input.split === 'by_percent_attribute' || input.split === 'divide_by_percent_attribute') {
       const splitAttribute = attributesById[input.splitAttributeId];
       if (!splitAttribute || splitAttribute.type !== 'number') errors.splitAttributeId = 'Choose a number Attribute for the split percentage.';
     }

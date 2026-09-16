@@ -17,7 +17,7 @@
     "direction": null,
     "referral_agreement": null,
     "calculationResults": {
-      "calculatedAt": "2026-09-10T17:17:41.496Z",
+      "calculatedAt": "2026-09-16T07:35:12.399Z",
       "lineItems": [
         {
           "ruleId": "company_dollar",
@@ -89,9 +89,9 @@
         {
           "ruleId": "capped_status_fee",
           "ruleLabel": "Capped-Status Fee",
-          "applies": "per_agent_side",
+          "applies": "per_distinct_agent",
           "payee": "roa",
-          "split": "none",
+          "split": "by_percent_attribute",
           "contributesToTracker": "post_cap_bucket",
           "waivable": false,
           "participant": {
@@ -101,14 +101,14 @@
           },
           "branchIndex": 1,
           "rawAmount": 250,
-          "amount": 250
+          "amount": 62.5
         },
         {
           "ruleId": "capped_status_fee",
           "ruleLabel": "Capped-Status Fee",
-          "applies": "per_agent_side",
+          "applies": "per_distinct_agent",
           "payee": "roa",
-          "split": "none",
+          "split": "by_percent_attribute",
           "contributesToTracker": "post_cap_bucket",
           "waivable": false,
           "participant": {
@@ -118,12 +118,12 @@
           },
           "branchIndex": 1,
           "rawAmount": 250,
-          "amount": 250
+          "amount": 125
         },
         {
           "ruleId": "risk_fee",
           "ruleLabel": "Risk Fee",
-          "applies": "per_agent_side",
+          "applies": "per_side",
           "payee": "roa",
           "split": "by_percent_attribute",
           "contributesToTracker": "none",
@@ -134,13 +134,13 @@
             "side": "listing"
           },
           "branchIndex": 0,
-          "rawAmount": 100,
+          "rawAmount": 50,
           "amount": 25
         },
         {
           "ruleId": "risk_fee",
           "ruleLabel": "Risk Fee",
-          "applies": "per_agent_side",
+          "applies": "per_side",
           "payee": "roa",
           "split": "by_percent_attribute",
           "contributesToTracker": "none",
@@ -151,14 +151,14 @@
             "side": "sale"
           },
           "branchIndex": 0,
-          "rawAmount": 100,
+          "rawAmount": 50,
           "amount": 50
         }
       ],
       "totalsByPayee": {
-        "roa": 1405.5
+        "roa": 1093
       },
-      "grandTotal": 1405.5,
+      "grandTotal": 1093,
       "skipped": [
         {
           "ruleId": "personal_deal_fee",
@@ -213,9 +213,9 @@
         "name": "Rose Melinda Munoz",
         "email": "melinda.munoz.az@realtyofamerica.com",
         "side": "listing",
-        "commission_percent": 1.5,
+        "commission_percent": 50,
         "commission_amount": 3870,
-        "side_percentage": 25
+        "side_percentage": 50
       },
       {
         "type": "user",
@@ -226,9 +226,9 @@
         "name": "Rose Melinda Munoz",
         "email": "melinda.munoz.az@realtyofamerica.com",
         "side": "sale",
-        "commission_percent": 2,
+        "commission_percent": 100,
         "commission_amount": 5160,
-        "side_percentage": 50
+        "side_percentage": 100
       },
       {
         "type": "user",
@@ -239,9 +239,414 @@
         "name": "Anakaren Moore",
         "email": "karen.moore.az@realtyofamerica.com",
         "side": "listing",
-        "commission_percent": 1.5,
+        "commission_percent": 50,
         "commission_amount": 3870,
-        "side_percentage": 25
+        "side_percentage": 50
+      }
+    ]
+  },
+  {
+    "id": "d132ba7e-48b1-413a-ab88-b0795e00e93b",
+    "sale_guid": "d132ba7e-48b1-413a-ab88-b0795e00e93b",
+    "listing_price": 0,
+    "sale_price": 638157,
+    "property_address": "9080 Shifting Skye St, Las Vegas, NV 89124",
+    "deal_type": "Purchase",
+    "overall_gci": 11920,
+    "personal_deal": false,
+    "source": "Personal Referral",
+    "listing_commission_percent": 0,
+    "sale_commission_percent": 1.8678,
+    "portion": "standard",
+    "deal_subtype": "none",
+    "state": null,
+    "decision": null,
+    "direction": null,
+    "referral_agreement": null,
+    "calculationResults": {
+      "calculatedAt": "2026-09-16T07:37:47.970Z",
+      "lineItems": [
+        {
+          "ruleId": "company_dollar",
+          "ruleLabel": "Company Dollar",
+          "applies": "per_agent_side",
+          "payee": "roa",
+          "split": "none",
+          "contributesToTracker": "cap_accumulation",
+          "waivable": false,
+          "participant": {
+            "guid": "54e6ec19-906f-4938-a01e-e14baa6f5562",
+            "name": "Richard Pobre",
+            "side": "sale"
+          },
+          "branchIndex": 4,
+          "rawAmount": 0,
+          "amount": 0
+        },
+        {
+          "ruleId": "capped_status_fee",
+          "ruleLabel": "Capped-Status Fee",
+          "applies": "per_distinct_agent",
+          "payee": "roa",
+          "split": "by_percent_attribute",
+          "contributesToTracker": "post_cap_bucket",
+          "waivable": false,
+          "participant": {
+            "guid": "54e6ec19-906f-4938-a01e-e14baa6f5562",
+            "name": "Richard Pobre",
+            "side": "sale"
+          },
+          "branchIndex": 1,
+          "rawAmount": 250,
+          "amount": 250
+        },
+        {
+          "ruleId": "risk_fee",
+          "ruleLabel": "Risk Fee",
+          "applies": "per_side",
+          "payee": "roa",
+          "split": "by_percent_attribute",
+          "contributesToTracker": "none",
+          "waivable": false,
+          "participant": {
+            "guid": "54e6ec19-906f-4938-a01e-e14baa6f5562",
+            "name": "Richard Pobre",
+            "side": "sale"
+          },
+          "branchIndex": 0,
+          "rawAmount": 50,
+          "amount": 50
+        }
+      ],
+      "totalsByPayee": {
+        "roa": 300
+      },
+      "grandTotal": 300,
+      "skipped": [
+        {
+          "ruleId": "technology_fee",
+          "ruleLabel": "Technology Fee"
+        },
+        {
+          "ruleId": "personal_deal_fee",
+          "ruleLabel": "Personal-Deal Fee"
+        },
+        {
+          "ruleId": "mentor_fee",
+          "ruleLabel": "Mentor Fee"
+        },
+        {
+          "ruleId": "mentorship_program_fee",
+          "ruleLabel": "Mentorship Program Fee"
+        },
+        {
+          "ruleId": "roa_leads_program",
+          "ruleLabel": "ROA Leads Program"
+        },
+        {
+          "ruleId": "kairos_program",
+          "ruleLabel": "Kairos Program"
+        },
+        {
+          "ruleId": "wa_workers_comp",
+          "ruleLabel": "WA Workers' Compensation (rate TBD — set annually from the WA L&I Rate Notice)"
+        },
+        {
+          "ruleId": "il_admin_fee",
+          "ruleLabel": "IL Admin Fee"
+        },
+        {
+          "ruleId": "delinquency_fee",
+          "ruleLabel": "Delinquency Fee"
+        },
+        {
+          "ruleId": "inbound_referral_fee",
+          "ruleLabel": "Inbound Referral Fee"
+        },
+        {
+          "ruleId": "outbound_referral_passthrough",
+          "ruleLabel": "Outbound Referral Pass-Through"
+        }
+      ],
+      "errors": []
+    },
+    "commission_splits": [
+      {
+        "type": "user",
+        "is_internal": true,
+        "brokerage": "ROA",
+        "is_referral": false,
+        "guid": "54e6ec19-906f-4938-a01e-e14baa6f5562",
+        "name": "Richard Pobre",
+        "email": null,
+        "side": "sale",
+        "commission_percent": 100,
+        "commission_amount": 11920,
+        "side_percentage": 100
+      }
+    ]
+  },
+  {
+    "id": "6b7a1de0-76e6-4e26-983e-fcd8d05e7209",
+    "sale_guid": "6b7a1de0-76e6-4e26-983e-fcd8d05e7209",
+    "listing_price": 0,
+    "sale_price": 440000,
+    "property_address": "4154 Holstein Hl, Columbus, GA 31904",
+    "deal_type": "Purchase",
+    "overall_gci": 15400,
+    "personal_deal": false,
+    "source": "SOI",
+    "listing_commission_percent": 0,
+    "sale_commission_percent": 3.5,
+    "portion": "standard",
+    "deal_subtype": "none",
+    "state": null,
+    "decision": null,
+    "direction": null,
+    "referral_agreement": null,
+    "calculationResults": {
+      "calculatedAt": "2026-09-16T07:37:52.243Z",
+      "lineItems": [
+        {
+          "ruleId": "company_dollar",
+          "ruleLabel": "Company Dollar",
+          "applies": "per_agent_side",
+          "payee": "roa",
+          "split": "none",
+          "contributesToTracker": "cap_accumulation",
+          "waivable": false,
+          "participant": {
+            "guid": "74b46be1-57d6-4734-9ab3-7c9007441fe4",
+            "name": "Jonita Floyd",
+            "side": "sale"
+          },
+          "branchIndex": 1,
+          "rawAmount": 2310,
+          "amount": 2310
+        },
+        {
+          "ruleId": "technology_fee",
+          "ruleLabel": "Technology Fee",
+          "applies": "per_distinct_agent",
+          "payee": "roa",
+          "split": "none",
+          "contributesToTracker": "tech_fee_bucket",
+          "waivable": true,
+          "participant": {
+            "guid": "74b46be1-57d6-4734-9ab3-7c9007441fe4",
+            "name": "Jonita Floyd"
+          },
+          "branchIndex": 1,
+          "rawAmount": 250,
+          "amount": 250
+        },
+        {
+          "ruleId": "risk_fee",
+          "ruleLabel": "Risk Fee",
+          "applies": "per_side",
+          "payee": "roa",
+          "split": "by_percent_attribute",
+          "contributesToTracker": "none",
+          "waivable": false,
+          "participant": {
+            "guid": "74b46be1-57d6-4734-9ab3-7c9007441fe4",
+            "name": "Jonita Floyd",
+            "side": "sale"
+          },
+          "branchIndex": 0,
+          "rawAmount": 50,
+          "amount": 50
+        }
+      ],
+      "totalsByPayee": {
+        "roa": 2610
+      },
+      "grandTotal": 2610,
+      "skipped": [
+        {
+          "ruleId": "capped_status_fee",
+          "ruleLabel": "Capped-Status Fee"
+        },
+        {
+          "ruleId": "personal_deal_fee",
+          "ruleLabel": "Personal-Deal Fee"
+        },
+        {
+          "ruleId": "mentor_fee",
+          "ruleLabel": "Mentor Fee"
+        },
+        {
+          "ruleId": "mentorship_program_fee",
+          "ruleLabel": "Mentorship Program Fee"
+        },
+        {
+          "ruleId": "roa_leads_program",
+          "ruleLabel": "ROA Leads Program"
+        },
+        {
+          "ruleId": "kairos_program",
+          "ruleLabel": "Kairos Program"
+        },
+        {
+          "ruleId": "wa_workers_comp",
+          "ruleLabel": "WA Workers' Compensation (rate TBD — set annually from the WA L&I Rate Notice)"
+        },
+        {
+          "ruleId": "il_admin_fee",
+          "ruleLabel": "IL Admin Fee"
+        },
+        {
+          "ruleId": "delinquency_fee",
+          "ruleLabel": "Delinquency Fee"
+        },
+        {
+          "ruleId": "inbound_referral_fee",
+          "ruleLabel": "Inbound Referral Fee"
+        },
+        {
+          "ruleId": "outbound_referral_passthrough",
+          "ruleLabel": "Outbound Referral Pass-Through"
+        }
+      ],
+      "errors": []
+    },
+    "commission_splits": [
+      {
+        "type": "user",
+        "is_internal": true,
+        "brokerage": "ROA",
+        "is_referral": false,
+        "guid": "74b46be1-57d6-4734-9ab3-7c9007441fe4",
+        "name": "Jonita Floyd",
+        "email": "jonita.floyd@realtyofamerica.com",
+        "side": "sale",
+        "commission_percent": 100,
+        "commission_amount": 15400,
+        "side_percentage": 100
+      }
+    ]
+  },
+  {
+    "id": "29d6e3b4-d5ec-404d-af4a-adb09f6b66d6",
+    "sale_guid": "29d6e3b4-d5ec-404d-af4a-adb09f6b66d6",
+    "listing_price": 0,
+    "sale_price": 539000,
+    "property_address": "8910 Felker St, Las Vegas, NV 89166",
+    "deal_type": "Purchase",
+    "overall_gci": 13475,
+    "personal_deal": true,
+    "source": "SOI",
+    "listing_commission_percent": 0,
+    "sale_commission_percent": 2.5,
+    "portion": "standard",
+    "deal_subtype": "none",
+    "state": null,
+    "decision": null,
+    "direction": null,
+    "referral_agreement": null,
+    "calculationResults": {
+      "calculatedAt": "2026-09-16T07:37:56.358Z",
+      "lineItems": [
+        {
+          "ruleId": "personal_deal_fee",
+          "ruleLabel": "Personal-Deal Fee",
+          "applies": "per_transaction",
+          "payee": "roa",
+          "split": "none",
+          "contributesToTracker": "none",
+          "waivable": false,
+          "participant": null,
+          "branchIndex": 0,
+          "rawAmount": 850,
+          "amount": 850
+        },
+        {
+          "ruleId": "risk_fee",
+          "ruleLabel": "Risk Fee",
+          "applies": "per_side",
+          "payee": "roa",
+          "split": "by_percent_attribute",
+          "contributesToTracker": "none",
+          "waivable": false,
+          "participant": {
+            "guid": "4fa95830-f900-44fd-bd39-9a05a401201f",
+            "name": "Louise Trujillo",
+            "side": "sale"
+          },
+          "branchIndex": 0,
+          "rawAmount": 50,
+          "amount": 50
+        }
+      ],
+      "totalsByPayee": {
+        "roa": 900
+      },
+      "grandTotal": 900,
+      "skipped": [
+        {
+          "ruleId": "company_dollar",
+          "ruleLabel": "Company Dollar"
+        },
+        {
+          "ruleId": "technology_fee",
+          "ruleLabel": "Technology Fee"
+        },
+        {
+          "ruleId": "capped_status_fee",
+          "ruleLabel": "Capped-Status Fee"
+        },
+        {
+          "ruleId": "mentor_fee",
+          "ruleLabel": "Mentor Fee"
+        },
+        {
+          "ruleId": "mentorship_program_fee",
+          "ruleLabel": "Mentorship Program Fee"
+        },
+        {
+          "ruleId": "roa_leads_program",
+          "ruleLabel": "ROA Leads Program"
+        },
+        {
+          "ruleId": "kairos_program",
+          "ruleLabel": "Kairos Program"
+        },
+        {
+          "ruleId": "wa_workers_comp",
+          "ruleLabel": "WA Workers' Compensation (rate TBD — set annually from the WA L&I Rate Notice)"
+        },
+        {
+          "ruleId": "il_admin_fee",
+          "ruleLabel": "IL Admin Fee"
+        },
+        {
+          "ruleId": "delinquency_fee",
+          "ruleLabel": "Delinquency Fee"
+        },
+        {
+          "ruleId": "inbound_referral_fee",
+          "ruleLabel": "Inbound Referral Fee"
+        },
+        {
+          "ruleId": "outbound_referral_passthrough",
+          "ruleLabel": "Outbound Referral Pass-Through"
+        }
+      ],
+      "errors": []
+    },
+    "commission_splits": [
+      {
+        "type": "user",
+        "is_internal": true,
+        "brokerage": "ROA",
+        "is_referral": false,
+        "guid": "4fa95830-f900-44fd-bd39-9a05a401201f",
+        "name": "Louise Trujillo",
+        "email": "louise.nv@realtyofamerica.com",
+        "side": "sale",
+        "commission_percent": 100,
+        "commission_amount": 13475,
+        "side_percentage": 100
       }
     ]
   }

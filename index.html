@@ -1154,8 +1154,9 @@
     function describeApplies(rule, attributesById) {
       const appliesLabel = APPLIES_LABELS[rule.applies] || APPLIES_LABELS.per_transaction;
       if (!APPLIES_ALLOWING_SPLIT.includes(rule.applies)) return appliesLabel;
-      if (rule.split === 'by_percent_attribute') {
-        return `${appliesLabel}, split by ${attributesById[rule.splitAttributeId]?.label || '?'}`;
+      if (rule.split === 'by_percent_attribute' || rule.split === 'divide_by_percent_attribute') {
+        const verb = rule.split === 'divide_by_percent_attribute' ? 'divided by' : 'scaled by';
+        return `${appliesLabel}, ${verb} ${attributesById[rule.splitAttributeId]?.label || '?'}`;
       }
       return `${appliesLabel}, ${SPLIT_LABELS.none}`;
     }
@@ -1358,7 +1359,7 @@
                     </select>
                     {errors.split && <div className="field-error">{errors.split}</div>}
 
-                    {form.split === 'by_percent_attribute' && (
+                    {(form.split === 'by_percent_attribute' || form.split === 'divide_by_percent_attribute') && (
                       <div className="field">
                         <label>Split percentage Attribute (each participant's own share, e.g. 60 for 60%)</label>
                         <AttributeSelect attributes={numberAttributes} value={form.splitAttributeId} onChange={(v) => update({ splitAttributeId: v })} />
