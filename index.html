@@ -29,7 +29,7 @@
   <script type="text/babel">
     // ROA Rule Engine — Attribute catalog UI (React, buildless via Babel-in-browser).
 
-    const { useState, useEffect } = React;
+    const { useState, useEffect, useRef } = React;
 
     const TYPE_LABELS = {
       number: 'Number',
@@ -38,6 +38,47 @@
       boolean: 'Boolean',
       text: 'Text',
     };
+
+    // Shared "⋮" actions menu — every table's row actions (Edit/History/
+    // Delete/Run/etc.) collapse into this instead of one button per
+    // action, so a wide action set doesn't force the whole table wider.
+    // `items`: [{ label, onClick, danger?, disabled?, hidden? }].
+    function ActionsMenu({ items }) {
+      const [open, setOpen] = useState(false);
+      const ref = useRef(null);
+
+      useEffect(() => {
+        if (!open) return;
+        function handleClickOutside(e) {
+          if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+        }
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+      }, [open]);
+
+      const visibleItems = items.filter((item) => !item.hidden);
+
+      return (
+        <div className="actions-menu" ref={ref}>
+          <button type="button" className="icon-btn" title="Actions" onClick={() => setOpen((o) => !o)}>⋮</button>
+          {open && (
+            <div className="actions-menu-list">
+              {visibleItems.map((item, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  className={'actions-menu-item' + (item.danger ? ' actions-menu-item-danger' : '')}
+                  disabled={item.disabled}
+                  onClick={() => { setOpen(false); item.onClick(); }}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
 
     function ChipInput({ values, onChange, placeholder }) {
       const [draft, setDraft] = useState('');
@@ -344,11 +385,11 @@
           <td>{allowedValuesDisplay(attribute)}</td>
           <td>{attribute.note && <span className="note-flag" title={attribute.note}>⚠ {attribute.note}</span>}</td>
           <td className="actions-cell">
-            <button className="btn-link" onClick={() => onEdit(attribute)}>Edit</button>
-            <button className="btn-link" onClick={() => onToggleHistory(attribute.id)}>
-              {historyExpanded ? 'Hide history' : 'History'}
-            </button>
-            <button className="btn-link btn-danger" onClick={() => onDelete(attribute)}>Delete</button>
+            <ActionsMenu items={[
+              { label: 'Edit', onClick: () => onEdit(attribute) },
+              { label: historyExpanded ? 'Hide history' : 'History', onClick: () => onToggleHistory(attribute.id) },
+              { label: 'Delete', onClick: () => onDelete(attribute), danger: true },
+            ]} />
           </td>
         </tr>
       );
@@ -356,7 +397,7 @@
 
     function HistoryTable({ versions }) {
       return (
-        <table className="history-table">
+        <div className="table-scroll"><table className="history-table">
           <thead>
             <tr>
               <th>Version</th>
@@ -384,6 +425,7 @@
             ))}
           </tbody>
         </table>
+            </div>
       );
     }
 
@@ -474,6 +516,7 @@
           {attributes.length === 0 ? (
             <div className="empty-state">No Attributes yet. Click "+ New Attribute" to create one.</div>
           ) : (
+            <div className="table-scroll">
             <table className="attribute-table">
               <thead>
                 <tr>
@@ -508,6 +551,7 @@
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </div>
       );
@@ -1234,6 +1278,37 @@
       );
     }
 
+    // Concrete worked example per `applies` value, shown on demand (click
+    // the "?" next to the field) rather than always-on — the four values
+    // are easy to state precisely but hard to tell apart from the label
+    // alone (per_side vs per_agent_side especially), so an example beats a
+    // longer label.
+    const APPLIES_EXAMPLES = {
+      per_transaction: 'Fires once no matter how many people or sides are on the deal.',
+      per_side: "Fires once for each side. If two people share a side, they split that side's one amount — e.g. Risk Fee: a $50 side shared 70/30 pays $35/$15.",
+      per_agent_side: 'Fires separately for every person on every side. Someone on 2 sides gets 2 independent amounts — e.g. Company Dollar: $500 on the listing side + $500 on the sale side.',
+      per_distinct_agent: "Fires once per person for the whole deal, using ONE amount. That amount is then divided across their own sides — e.g. Capped-Status Fee: one $250 tier per person, split across their sides, not $250 on each side.",
+    };
+
+    function AppliesHelp() {
+      const [open, setOpen] = useState(false);
+      return (
+        <>
+          <button type="button" className="icon-btn" title="Show examples" onClick={() => setOpen((o) => !o)}>?</button>
+          {open && (
+            <div className="applies-help-box">
+              {APPLIES_OPTIONS.map((a) => (
+                <div key={a} className="applies-help-row">
+                  <strong>{APPLIES_LABELS[a]}</strong>
+                  <span>{APPLIES_EXAMPLES[a]}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      );
+    }
+
     function RuleForm({ initial, editingId, existingRules, attributes, onSave, onCancel }) {
       const [form, setForm] = useState(initial || emptyRuleForm());
       const [errors, setErrors] = useState({});
@@ -1328,7 +1403,7 @@
             {showAdvanced && (
               <div className="advanced-body">
                 <div className="field">
-                  <label>Applies (how many times does this Rule fire?)</label>
+                  <label>Applies (how many times does this Rule fire?) <AppliesHelp /></label>
                   <select
                     value={form.applies}
                     onChange={(e) => {
@@ -1413,11 +1488,11 @@
           <td>{CONTRIBUTES_TO_TRACKER_LABELS[rule.contributesToTracker] || CONTRIBUTES_TO_TRACKER_LABELS.none}</td>
           <td>{rule.waivable ? 'Yes' : 'No'}</td>
           <td className="actions-cell">
-            <button className="btn-link" onClick={() => onEdit(rule)}>Edit</button>
-            <button className="btn-link" onClick={() => onToggleHistory(rule.id)}>
-              {historyExpanded ? 'Hide history' : 'History'}
-            </button>
-            <button className="btn-link btn-danger" onClick={() => onDelete(rule)}>Delete</button>
+            <ActionsMenu items={[
+              { label: 'Edit', onClick: () => onEdit(rule) },
+              { label: historyExpanded ? 'Hide history' : 'History', onClick: () => onToggleHistory(rule.id) },
+              { label: 'Delete', onClick: () => onDelete(rule), danger: true },
+            ]} />
           </td>
         </tr>
       );
@@ -1425,7 +1500,7 @@
 
     function RuleHistoryTable({ versions, attributesById }) {
       return (
-        <table className="history-table">
+        <div className="table-scroll"><table className="history-table">
           <thead>
             <tr>
               <th>Version</th>
@@ -1455,6 +1530,7 @@
             ))}
           </tbody>
         </table>
+            </div>
       );
     }
 
@@ -1551,6 +1627,7 @@
           {rules.length === 0 ? (
             <div className="empty-state">No Rules yet. Click "+ New Rule" to create one.</div>
           ) : (
+            <div className="table-scroll">
             <table className="attribute-table">
               <thead>
                 <tr>
@@ -1596,6 +1673,7 @@
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </div>
       );
@@ -1856,6 +1934,7 @@
           {transactions.length === 0 ? (
             <div className="empty-state">No Transactions yet. Click "+ New Transaction" to create one.</div>
           ) : (
+            <div className="table-scroll">
             <table className="attribute-table">
               <thead>
                 <tr>
@@ -1889,15 +1968,17 @@
                         ) : <em>Not yet calculated</em>}
                       </td>
                       <td className="actions-cell">
-                        <button className="btn-link" onClick={() => handleRunCalculation(t)} disabled={rules.length === 0}>Run Mock Calculation</button>
-                        <button className="btn-link" onClick={() => handleEdit(t)}>Edit</button>
-                        <button className="btn-link btn-danger" onClick={() => handleDelete(t)}>Delete</button>
+                        <ActionsMenu items={[
+                          { label: 'Run Mock Calculation', onClick: () => handleRunCalculation(t), disabled: rules.length === 0 },
+                          { label: 'Edit', onClick: () => handleEdit(t) },
+                          { label: 'Delete', onClick: () => handleDelete(t), danger: true },
+                        ]} />
                       </td>
                     </tr>
                     {expandedId === t.id && (
                       <tr className="branches-row">
                         <td colSpan="7">
-                          <table className="history-table">
+                          <div className="table-scroll"><table className="history-table">
                             <thead>
                               <tr>
                                 {splitAttrs.map((a) => <th key={a.id}>{a.label}</th>)}
@@ -1915,6 +1996,7 @@
                               ))}
                             </tbody>
                           </table>
+            </div>
                         </td>
                       </tr>
                     )}
@@ -1929,6 +2011,7 @@
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </div>
       );
@@ -2033,6 +2116,7 @@
           {agents.length === 0 ? (
             <div className="empty-state">No Agents yet. Click "+ New Agent" to create one.</div>
           ) : (
+            <div className="table-scroll">
             <table className="attribute-table">
               <thead>
                 <tr>
@@ -2054,14 +2138,16 @@
                         </button>
                       </td>
                       <td className="actions-cell">
-                        <button className="btn-link" onClick={() => handleEdit(a)}>Edit</button>
-                        <button className="btn-link btn-danger" onClick={() => handleDelete(a)}>Delete</button>
+                        <ActionsMenu items={[
+                          { label: 'Edit', onClick: () => handleEdit(a) },
+                          { label: 'Delete', onClick: () => handleDelete(a), danger: true },
+                        ]} />
                       </td>
                     </tr>
                     {expandedId === a.id && (
                       <tr className="branches-row">
                         <td colSpan="4">
-                          <table className="history-table">
+                          <div className="table-scroll"><table className="history-table">
                             <tbody>
                               {agentAttrs.map((attr) => {
                                 const field = fieldFromPath(attr.resolver.path);
@@ -2075,6 +2161,7 @@
                               })}
                             </tbody>
                           </table>
+            </div>
                         </td>
                       </tr>
                     )}
@@ -2082,6 +2169,7 @@
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </div>
       );
@@ -2108,7 +2196,7 @@
           {results.lineItems.length === 0 ? (
             <div className="empty-state">No Rule produced a line item for this transaction.</div>
           ) : (
-            <table className="history-table">
+            <div className="table-scroll"><table className="history-table">
               <thead>
                 <tr>
                   <th>Rule</th>
@@ -2130,10 +2218,11 @@
                 ))}
               </tbody>
             </table>
+            </div>
           )}
 
           <div className="form-section-title">Totals by payee</div>
-          <table className="history-table">
+          <div className="table-scroll"><table className="history-table">
             <tbody>
               {Object.entries(results.totalsByPayee).map(([payee, total]) => (
                 <tr key={payee}><td>{PAYEE_LABEL(payee)}</td><td>${total.toFixed(2)}</td></tr>
@@ -2141,6 +2230,7 @@
               <tr><td><strong>Grand total</strong></td><td><strong>${results.grandTotal.toFixed(2)}</strong></td></tr>
             </tbody>
           </table>
+            </div>
 
           {results.errors.length > 0 && (
             <>
@@ -2205,6 +2295,7 @@
           {transactions.length === 0 ? (
             <div className="empty-state">No Transactions yet — create one on the Transactions tab first.</div>
           ) : (
+            <div className="table-scroll">
             <table className="attribute-table">
               <thead>
                 <tr>
@@ -2222,12 +2313,10 @@
                       <td>{t.deal_type || <em>None</em>}</td>
                       <td>{t.calculationResults ? new Date(t.calculationResults.calculatedAt).toLocaleString() : <em>Never</em>}</td>
                       <td className="actions-cell">
-                        <button className="btn-link" onClick={() => handleRunCalculation(t)} disabled={rules.length === 0}>Run Mock Calculation</button>
-                        {t.calculationResults && (
-                          <button className="btn-link" onClick={() => setExpandedId((c) => (c === t.id ? null : t.id))}>
-                            {expandedId === t.id ? 'Hide results' : 'View results'}
-                          </button>
-                        )}
+                        <ActionsMenu items={[
+                          { label: 'Run Mock Calculation', onClick: () => handleRunCalculation(t), disabled: rules.length === 0 },
+                          { label: expandedId === t.id ? 'Hide results' : 'View results', onClick: () => setExpandedId((c) => (c === t.id ? null : t.id)), hidden: !t.calculationResults },
+                        ]} />
                       </td>
                     </tr>
                     {expandedId === t.id && (
@@ -2241,6 +2330,7 @@
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </div>
       );
@@ -2267,7 +2357,15 @@
         return () => window.removeEventListener('popstate', handlePopState);
       }, []);
 
-      function navigateToTab(nextTab) {
+      // Real <a href> elements (not <button>) so ctrl/cmd-click and
+      // middle-click open the tab in a new browser tab, like any other
+      // link — the browser handles that natively, we only need to get out
+      // of its way. A plain left-click still intercepts via preventDefault
+      // and does the SPA pushState navigation (no full page reload).
+      function navigateToTab(e, nextTab) {
+        const isModifiedClick = e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0;
+        if (isModifiedClick) return; // let the browser open it in a new tab/window natively
+        e.preventDefault();
         if (nextTab === tab) return;
         window.history.pushState({}, '', ROUTE_FOR_TAB[nextTab]);
         setTab(nextTab);
@@ -2280,21 +2378,21 @@
             <p className="subtitle">Attributes feed Rules — conditions and amounts are built on top of the Attribute catalog.</p>
           </header>
           <div className="tab-nav">
-            <button className={'tab-btn' + (tab === 'attributes' ? ' active' : '')} onClick={() => navigateToTab('attributes')}>
+            <a href={ROUTE_FOR_TAB.attributes} className={'tab-btn' + (tab === 'attributes' ? ' active' : '')} onClick={(e) => navigateToTab(e, 'attributes')}>
               Attributes
-            </button>
-            <button className={'tab-btn' + (tab === 'rules' ? ' active' : '')} onClick={() => navigateToTab('rules')}>
+            </a>
+            <a href={ROUTE_FOR_TAB.rules} className={'tab-btn' + (tab === 'rules' ? ' active' : '')} onClick={(e) => navigateToTab(e, 'rules')}>
               Rules
-            </button>
-            <button className={'tab-btn' + (tab === 'transactions' ? ' active' : '')} onClick={() => navigateToTab('transactions')}>
+            </a>
+            <a href={ROUTE_FOR_TAB.transactions} className={'tab-btn' + (tab === 'transactions' ? ' active' : '')} onClick={(e) => navigateToTab(e, 'transactions')}>
               Transactions
-            </button>
-            <button className={'tab-btn' + (tab === 'agents' ? ' active' : '')} onClick={() => navigateToTab('agents')}>
+            </a>
+            <a href={ROUTE_FOR_TAB.agents} className={'tab-btn' + (tab === 'agents' ? ' active' : '')} onClick={(e) => navigateToTab(e, 'agents')}>
               Agents
-            </button>
-            <button className={'tab-btn' + (tab === 'calculations' ? ' active' : '')} onClick={() => navigateToTab('calculations')}>
+            </a>
+            <a href={ROUTE_FOR_TAB.calculations} className={'tab-btn' + (tab === 'calculations' ? ' active' : '')} onClick={(e) => navigateToTab(e, 'calculations')}>
               Calculations
-            </button>
+            </a>
           </div>
           {tab === 'attributes' && <AttributesScreen />}
           {tab === 'rules' && <RulesScreen />}
