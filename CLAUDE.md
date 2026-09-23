@@ -1,423 +1,134 @@
 # ROA Rule Engine
 
-Prototype rule engine that calculates commissions. Build order: **Attributes**
-→ **Rules** (both now implemented), with conditions built *inside* Rules on
-top of the Attribute catalog (not a separate phase before it). This file
-captures decisions so sessions don't re-derive them.
+Prototype commission rule engine for ROA. Five tabs, in dependency order:
+**Attributes** (typed fact catalog) → **Rules** (conditions + amounts built on
+Attributes) → **Transactions** / **Agents** (real fact data; forms are
+generated from the Attribute catalog) → **Calculations** (mock engine output).
+This file captures decisions so sessions don't re-derive them.
+
+**Full handover detail lives in the project skill
+`.claude/skills/roa-rule-engine/`** — engine semantics and worked examples,
+the 14-rule catalog, data model, decision history, and open items. Read it
+before non-trivial work. Keep this file and the skill in sync when a
+decision changes.
 
 ## Stack
 
-HTML, CSS, JavaScript, React (buildless — CDN + in-browser Babel, no npm
-install). **Now has a minimal local server** (`server.js`, zero
-dependencies, plain Node `http`/`fs`) — this reverses the earlier "no
-backend" decision. Why: the Attribute catalog was in `localStorage`, which
-is scoped per-browser — opening the app in a different browser (or
-profile, or incognito) showed an empty catalog even though it's the same
-file on disk. Client-side-only storage can't survive that; a `file://`
-page also can't write to disk itself (no server-write API in a browser).
-The server exists to persist JSON-array catalogs to disk — now two of
-them: `attributes-data.json` via `/api/attributes`, and (deliberately, a
-second instance of the same pattern — see `RESOURCES` in `server.js`)
-`rules-data.json` via `/api/rules`. Both are the same generic GET/PUT
-handler over a data file; it is still not a general backend/API layer, and
-nothing else should be added without a similarly deliberate decision.
-**Restart the server after pulling `server.js` changes** — Node doesn't
-hot-reload, so a running instance keeps serving with the old route table
-until restarted (hit this exact issue getting `/api/rules` live).
+HTML, CSS, JavaScript, React — buildless (CDN React + in-browser Babel, no
+bundler). A minimal zero-dependency Node server (`server.js`, plain
+`http`/`fs`) persists JSON-array data files. It exists because the catalog
+used to live in `localStorage`, which is per-browser, and a `file://` page
+can't write to disk.
+
+`server.js` `RESOURCES` maps four generic GET/PUT endpoints to files:
+`/api/attributes` → `attributes-data.json`, `/api/rules` → `rules-data.json`,
+`/api/transactions` → `transactions-data.json`, `/api/agents` →
+`agents-data.json`. It is not a general API layer; add a resource only
+deliberately. `APP_ROUTES` (`/`, `/attributes`, `/rules`, `/transactions`,
+`/agents`, `/calculations`) is an explicit SPA fallback list (not a
+catch-all, so missing assets still 404).
 
 **Run with `node server.js` (or `npm start`), then open
-`http://localhost:5050`** — double-clicking `index.html` directly no longer
-persists (the page's `fetch()` calls fail with no server to answer them;
-loading falls back to an empty catalog, and saving shows an alert telling
-the user to start the server).
+`http://localhost:5050`.** Restart the server after any `server.js` change
+(no hot reload). Static files and data files are read per request — a
+browser refresh is enough for those. Double-clicking `index.html` renders
+but can't load or save data.
+
+**App JSX must stay inlined in `index.html`, never a `src`-loaded Babel
+script** — Babel fetches external JSX via XHR, which Chrome blocks under
+`file://`, leaving a blank page. `attributes.js`, `rules.js`, and
+`calculation.js` are fine as separate files because they're plain
+(non-Babel) scripts; their functions are browser globals (no
+`module.exports` — load them in Node with `vm.runInThisContext`).
+
+Adding a persisted resource or tab touches four places: `server.js`
+(`RESOURCES`/`APP_ROUTES`), a `netlify/functions/<name>.js`, `netlify.toml`
+redirects, and `ROUTE_FOR_TAB`/`TAB_FOR_ROUTE` + nav link in `index.html`.
 
 ### Deployment (Netlify)
 
-`server.js` is a long-running Node `http` process with `fs.readFileSync`/
-`writeFileSync` against local disk. Netlify doesn't run that shape of
-thing — it's a static CDN plus short-lived serverless Functions with no
-persistent writable filesystem — so a plain "deploy as-is" would serve the
-static files fine but 404 every `/api/*` call.
+Live at `https://sunny-muffin-2de3b8.netlify.app`. Netlify has no
+long-running process or writable disk, so each `RESOURCES` entry is mirrored
+by a Netlify Function (`netlify/functions/attributes.js`, `rules.js`,
+`transactions.js`, `agents.js`) sharing one GET/PUT handler
+(`netlify/functions/_lib/jsonStore.js`) backed by **Netlify Blobs** instead
+of the filesystem. Each Function bundles its `*-data.json` as a seed: an
+empty store (fresh deploy) is initialized from it on first GET.
+`netlify.toml` rewrites `/api/*` to the Functions and each tab path to
+`/index.html`; static files deploy unchanged (`publish = "."`, no build).
 
-Chosen fix: **Netlify Functions + Netlify Blobs**, not a second external
-host. Four Functions (`netlify/functions/attributes.js`, `rules.js`,
-`transactions.js`, `agents.js` — the last two added once those tabs
-existed) mirror `server.js`'s `RESOURCES` entries one-for-one, sharing a
-`GET`/`PUT`-JSON-array handler (`netlify/functions/_lib/jsonStore.js`)
-that swaps `fs.readFileSync`/`writeFileSync` for Netlify Blobs'
-`store.get`/`store.setJSON` — Blobs is Netlify's own key-value store,
-reachable from Functions with no extra config once deployed on Netlify.
-Unlike `attributes.js`/`rules.js` on the frontend (deliberately duplicated
-per-resource, see above), the Functions share this helper — it's infra
-plumbing, not domain logic, so there's no independent-evolution reason to
-fork it. Each Function bundles the matching `*-data.json` file as a seed:
-on a store's very first `GET` (empty store, fresh deploy) it's initialized
-from that seed rather than starting empty, so whatever's currently in the
-repo's data files shows up on Netlify too.
+`@netlify/blobs` (`^11.0.2`) is the only dependency and is deploy-only;
+local dev needs nothing installed. 11.x wants Node ≥22.12 (a non-fatal
+engine warning on older local Node) — chosen over 9.x, which carries a
+transitive high-severity `image-size` advisory.
 
-`netlify.toml` does the routing: each `/api/*` route redirects (status
-200, i.e. a rewrite) to its matching Function, and each tab's path
-(`/attributes`, `/rules`, `/transactions`, `/agents`, `/calculations`)
-redirects to `/index.html` — the Netlify-side equivalent of `server.js`'s
-`APP_ROUTES` SPA fallback, same reasoning. Static files (`index.html`,
-`style.css`, `attributes.js`, `rules.js`, `calculation.js`) need no
-changes and no build step — Netlify serves the repo root directly per
-`netlify.toml`'s `publish = "."`. The frontend's `fetch()` calls already
-use relative paths, so they don't need to change either.
+Two real-deploy issues, both fixed:
 
-`@netlify/blobs` is the one dependency this adds — `package.json` now has
-a `dependencies` block for the first time (was zero-deps before), but only
-for the Netlify deploy path; `node server.js` local dev still needs
-nothing installed. Pinned to `^11.0.2` (latest at the time): an earlier
-attempt pinned `^9.1.6` to dodge a Node-version engine warning on the dev
-machine (11.x wants Node ≥22.12, the dev machine had 20.12), but 9.x pulls
-in a transitive high-severity `image-size` DoS advisory (via
-`@netlify/dev-utils`) that's only fixed in 11.x — not exploitable in this
-app (nothing here parses untrusted images) but not worth carrying either,
-so the engine warning (non-fatal locally; Netlify's own build image is a
-separate, newer Node) was the smaller tradeoff.
+- **Whole site 401 "Login Redirect"** — Netlify's Visitor Access setting.
+  Dashboard: Site configuration → General → Visitor access → off.
+- **`MissingBlobsEnvironmentError`** — Netlify's automatic Blobs context
+  injection doesn't always happen. `resolveStore()` in `jsonStore.js` uses
+  explicit config when env vars `BLOBS_SITE_ID` (Site configuration →
+  General → Site details) and `BLOBS_TOKEN` (User settings → Applications →
+  personal access token) are set, scoped to Functions; redeploy after
+  setting them. Custom names avoid Netlify's reserved `NETLIFY_*` vars.
 
-Deployed and working at `https://sunny-muffin-2de3b8.netlify.app`. Two
-real-deploy issues hit along the way, both fixed:
-
-- **Whole site returning 401 with a "Login Redirect" page** (not just
-  `/api/*` — `/`, `/style.css`, everything) — this was Netlify's own
-  **Visitor Access** / site-protection dashboard setting gating the site
-  behind a Netlify-account login wall, unrelated to anything in this repo.
-  Fixed in the dashboard: Site configuration → General → Visitor access →
-  off. Nothing to do on the code side for this one.
-- **`MissingBlobsEnvironmentError` from the Functions** (`getStore(name)`'s
-  zero-config form throwing "The environment has not been configured to
-  use Netlify Blobs... supply siteID, token") — Netlify's automatic
-  site-context injection into `getStore()` doesn't always happen (varies
-  by how/when the site was created; hit this on a real deploy despite
-  `netlify.toml` + Functions being set up correctly). Fixed by having
-  `resolveStore()` in `jsonStore.js` prefer explicit `{ name, siteID,
-  token }` config when two env vars are set, falling back to the
-  zero-config form otherwise (so it still works automatically on a site
-  where auto-injection *does* work). To set them: Netlify dashboard → Site
-  configuration → Environment variables → add `BLOBS_SITE_ID` (Site
-  configuration → General → Site details → Site ID) and `BLOBS_TOKEN` (a
-  Personal Access Token from User settings → Applications → New access
-  token), scoped to Functions, then redeploy/trigger a new deploy so the
-  Functions pick them up. These are deliberately custom names, not
-  `NETLIFY_*`, to avoid colliding with Netlify's own reserved/built-in env
-  vars.
-
-See README.md's "Deploying to Netlify" for the run commands.
-
-(An earlier, unrelated Node.js/Express/TypeScript backend prototype was
-explored and abandoned before this one; ignore it if referenced anywhere in
-history — it's a different thing from `server.js`.)
-
-## Status
-
-Earlier conditions-builder scaffold (`catalog.js` + `conditions.js`) was
-deleted intentionally to restart clean — build order is now Attributes
-first, standalone. No git repo (prototype only, deletions aren't recoverable
-via version control).
-
-Current files: `index.html` + `style.css` + `attributes.js` + `rules.js` +
-`server.js` + `package.json`. JSX still compiles in-browser via Babel CDN
-(no build step) — only the persistence layer needs the server now, not
-React/Babel itself. `index.html` is a two-tab single-page app (`App` holds
-a `tab` state of `'attributes' | 'rules'`); `AttributesScreen` is the
-former `App` body unchanged, `RulesScreen` is new — see "Domain model —
-Rules" below for what it builds.
-
-**Path-based routing, no router library.** `/attributes` and `/rules` are
-real URL paths (`App`'s tab state initializes from
-`window.location.pathname` via `tabFromLocation()`; switching tabs calls
-`window.history.pushState()`, and a `popstate` listener handles back/
-forward). This is why a refresh on either tab now stays put instead of
-resetting to Attributes. Requires a **matching server-side fallback** —
-`server.js`'s `APP_ROUTES` (`/`, `/attributes`, `/rules`) — because the
-browser can request either path directly (refresh, typed URL, bookmark)
-and the server must answer with `index.html` instead of 404ing (the
-standard SPA-fallback pattern), while still 404ing genuinely missing
-assets. Kept as an explicit small route list rather than a catch-all
-specifically so that distinction holds.
-
-**Important — app JSX must stay inlined in `index.html`, not a separate
-`app.js`.** Babel Standalone fetches `<script type="text/babel" src="...">`
-via XHR to get the raw source to transpile, and Chrome blocks that XHR
-under `file://` (CORS) — an external app script leaves the page silently
-blank when opened by double-click. `attributes.js` is fine as a separate
-file because it's a plain (non-Babel) `<script src>`, loaded natively by
-the browser, not fetched via XHR. Hit this exact bug once already — don't
-reintroduce a `src`-loaded Babel script. (This still matters even though
-double-click-to-open no longer persists data — the app should still at
-least *render* if someone opens it that way.)
-
-Implements the **Attribute catalog management screen**: create/edit/delete
-Attributes (Label, Key, Type, Value label, Resolver path, and — for `enum`
-only — Allowed values source). Operators and Value widget are derived
-read-only from Type, never entered directly. Catalog persists to a JSON
-file on disk (`attributes-data.json`) via `server.js`'s `/api/attributes`
-endpoint — see Stack section above for why this replaced localStorage.
-`loadAttributes()`/`saveAttributes()` in `attributes.js` are now async
-(fetch-based); `App`'s `persist()` in `index.html` updates state optimistically
-and rolls back with an alert if the server call fails.
-
-`enum` static allowed values are stored as **plain strings** (label ==
-value) for now — confirmed as good enough for the prototype; revisit before
-assuming a separate `{label, value}` pair shape anywhere downstream.
-
-**Resolver field is suggestion-assisted free text, not a strict dropdown.**
-(See the resolver-root paragraph below for the root/field split — this note
-is about the field half specifically.) Uses an HTML `<datalist>`, scoped per
-selected root (`attributes.js`: `RESOLVER_FIELD_SUGGESTIONS_BY_ROOT`), so
-options appear while typing, but any value can still be typed — there's no
-fixed schema yet to validate against. Kept **deliberately minimal** per
-root (2-3 examples each) — an earlier attempt hardcoded ~30 suggestions
-deep-derived from roa-backend + the Economic Model spec, but the user
-called that out as inaccurate/presumptuous about a schema this app hasn't
-actually defined. Expand later once real schemas exist, not by mining
-adjacent systems again.
-
-**Contexts field removed for now.** The domain model below still describes
-`contexts` (optional, filters which transaction types an Attribute applies
-to) as part of the target Attribute shape, but it's not implemented in the
-UI or `buildAttribute()` currently — deferred until this app has real
-transaction types to filter against, rather than free-text guesses.
-
-**Table reference (`table_ref`) is back, designed properly this time.**
-Enum Attributes now offer a real choice: **Category** (the existing static
-values list) or **Reference** (`table_ref` — values come from a live,
-growing dataset instead of a hardcoded list, e.g. "every Team" or "every
-Agent"). Shape: `{ type: 'table_ref', table: 'teams' | 'agents', valueField:
-'id', labelField: 'name' }`. Only two tables for now — the only real
-entities this app knows about — with a **fixed** value/label field
-convention (`id`/`name`), not user-configurable, since there's no real
-backing dataset yet to validate arbitrary field names against.
-`attributes.js`: `TABLE_REF_TABLES`, `TABLE_REF_TABLE_KEYS`.
-
-**Rule "scope" collapses into ordinary conditions — no separate `scope`
-field on Rules.** The real Economic Model spec gives every rule a `scope`
-(global/plan/overlay/team/agent) as a structural attachment point, resolved
-before condition evaluation. This app **deliberately simplifies that away**:
-every rule is effectively global, and plan/overlay/team/agent narrowing is
-expressed as ordinary Attribute conditions instead (one mechanism, not two).
-This is *why* `table_ref` needed designing now — team/agent-scoped rules
-become conditions on `team`/`agent` Attributes, which need a live reference
-to actual team/agent instances, not a small static enum.
-
-**Resolver root is now `transaction` | `agent` | `team` — peers, not
-nested.** Previously agent-derived facts were modeled as
-`transaction.agent.X` (nested). Corrected to a flat peer convention
-(`agent.X`, `team.X`, `transaction.X`) because the real evaluation contract
-(`calculate(facts, progress_snapshot, ..., policy_binding)`) receives
-transaction facts and agent/team enrollment data as **separate inputs** —
-nesting agent under transaction didn't match that. The Attribute form now
-has a root `<select>` (Transaction/Agent/Team) + a field text input
-(`attributes.js`: `RESOLVER_ROOTS`, `RESOLVER_ROOT_LABELS`,
-`RESOLVER_FIELD_SUGGESTIONS_BY_ROOT`, `splitResolverPath()` for
-edit-time round-tripping) instead of one free-text path. Stored shape is
-still a single `resolver.path` string (e.g. `"agent.plan"`) — the UI
-splits/joins it, no data-shape change beyond the convention itself.
-Corrected the 6 Attributes that used the old nested convention
-(`cap_position`, `plan`, `personal_allowance`, `milestone`,
-`primary_license_state`, `personal_deals_this_year`) to the new root/field
-path. Also added two new `table_ref` example Attributes: `team` (`team.id`,
-references `teams`) and `agent` (`agent.id`, references `agents`) —
-concrete proof this all works together.
-
-**Version history was cleared once, deliberately** — all 21 Attributes
-were reset to a fresh `version: 1` in one pass (the resolver-path migration
-above and two enum-value fixes below were folded into that same reset,
-rather than left as visible history entries). This was a one-time seed-data
-cleanup, not a new standing behavior — edits made through the UI from here
-on still version normally (see below).
-
-**Two enum value gaps fixed:** `plan` was missing `marketing_collective`
-(the spec has 5 plans: Standard, Half Cap, Domestic Team, LFRO, Marketing
-Collective) and `program` was missing `mentorship` (a real overlay per the
-spec, just not a `source` value) — both flagged earlier, now corrected.
-
-**Editing an Attribute creates a new version — it never mutates the
-previous one in place.** Confirmed choice, mirroring the Economic Model
-spec's own policy-object philosophy ("a change is a new version, never an
-edit"). Every version ever saved lives flat in `attributes-data.json`,
-keyed by `id` + `version` (`attributes.js`: `currentAttributes()`,
-`versionsForId()`, `nextVersionNumber()`) — the catalog table only shows
-each id's latest version; a "History" button per row expands a read-only
-table of all past versions for that id. Kept deliberately minimal per the
-confirmed scope: version number + `updatedAt` timestamp only (no author/
-change-note field — no user accounts exist yet to attribute an edit to).
-**Delete is NOT versioned** — it removes every version of that id outright;
-only edits are versioned. Creating a new Attribute always starts at
-version 1.
-
-Rules phase is now implemented too — see "Domain model — Rules" below for
-what's built and Open items for what's genuinely still missing (evaluation,
-`kind`/`applies`/`split`, conflict resolution, a real Tracker catalog).
+See README.md's "Deploying to Netlify" for commands.
 
 ## Terminology
 
-Use **Attribute**, never "Dimension" — Dimension is OLAP/BI terminology and
-doesn't fit this domain.
+Use **Attribute**, never "Dimension".
 
-## Domain model — Attributes & conditions (conditions live inside Rules)
+## Core decisions
 
-### Attribute (catalog entry)
-
-- `type`: `number` | `enum` | `date` | `boolean`
-- `operators`: allowed operator set, driven by `type` (see below) — never
-  show an operator that doesn't apply to the attribute's type
-- `valueWidget`: input the UI renders for this attribute (number input,
-  single/multi select, date picker)
-- `valueLabel`: per-attribute label for the value field (e.g. "Count", not a
-  generic "Value")
-- `resolver`: how to pull this attribute's value — `{ kind: 'path', path:
-  '...' }`, a dot-path rooted at one of three **peers**: `transaction` |
-  `agent` | `team` (not nested — see Status above for why). `computed`
-  (derived via a function) and `external` (lookup from another service) are
-  out of scope unless a specific rule needs one.
-- `allowedValuesSource` (enum types only): `static` list (small, closed,
-  rarely-changing categories) or `table_ref` to a live dataset (`teams` |
-  `agents` — instance/PK-level values that grow over time, e.g. every Team).
-  See Status above for the exact shape. **Enum values only, never free
-  text** — hard rule for the whole catalog either way.
-- `contexts` (optional, **not yet implemented** — see Status above): which
-  transaction types the attribute applies to; omitted = all contexts. Same
-  field doubles as the "dynamic catalog" filter (e.g. only show relevant
-  attributes for a given transaction type).
-
-### Operators by type
-
-- number: `eq neq gt lt gte lte between in not_in is_empty is_not_empty`
-- enum: `eq neq in not_in is_empty is_not_empty`
-- date: `eq gt lt gte lte between in is_empty is_not_empty`
-- boolean: `eq` only
-
-### Condition value shape
-
-Shape follows the **operator**, not just the attribute type:
-
-- `single` — eq, neq, gt, lt, gte, lte
-- `list` — in, not_in
-- `range` — between (min/max)
-- `none` — is_empty, is_not_empty
-
-### Condition combination
-
-**Resolved: nested AND/OR groups**, not flat-AND-only — decided when the
-Rules phase started, since Rules is where conditions actually get combined
-in this app (they don't live at the Attribute-catalog level at all). See
-"Domain model — Rules" below for the `ConditionGroup` shape and the
-implementation.
-
-### Empty state
-
-Zero conditions = matches everything ("Every transaction — no
-conditions"), not an error or incomplete state. Carry this convention into
-rules too.
-
-## Domain model — Rules (implemented)
-
-The real Economic Model spec gives every rule a `scope`
-(global/plan/overlay/team/agent) — a structural attachment point resolved
-*before* condition evaluation, separate from the rule's `when` conditions.
-
-**This app collapses scope into conditions.** Every Rule here is
-effectively global; plan/overlay/team/agent narrowing is just an ordinary
-condition on the `plan`/`program`/`team`/`agent` Attributes (one mechanism
-— Attribute + operator + value — instead of two). This is why `table_ref`
-needed a proper design earlier: team/agent-scoped rules become conditions
-against live `team`/`agent` instances, not a small static enum.
-
-### Rule (catalog entry)
-
-`{ id, label, conditions: ConditionGroup, amount: AmountExpression, payee,
-version, updatedAt }`. Same versioning approach as Attributes (fresh v1,
-edits append a new version, delete removes all versions) — `rules.js`:
-`currentRules()`, `ruleVersionsForId()`, `nextRuleVersionNumber()`
-(duplicated from `attributes.js`'s equivalents rather than shared, to keep
-the two scripts independent).
-
-### Conditions — nested AND/OR (resolved; this app does NOT stay flat-AND-only)
-
-Unlike the flat `Condition[]` used elsewhere in this app's own Attribute-
-condition docs below, a Rule's conditions are a **tree**:
-```
-ConditionGroup: { kind: 'group', op: 'AND' | 'OR', children: (ConditionGroup | Condition)[] }
-Condition:      { kind: 'condition', attributeId, operator, value }
-```
-`value`'s shape still follows the operator (single/list/range/none, see
-"Condition value shape" below) — that part didn't change. An empty root
-group (`{op:'AND', children:[]}`) matches every transaction — same empty-
-state convention as Attributes. `rules.js`: `emptyConditionGroup()`,
-`emptyCondition()`, `conditionValueShape()`. UI: `ConditionGroupEditor`
-(recursive, +Condition/+Group buttons, AND/OR radio per group) +
-`ConditionRow` + `ConditionValueInput` (attribute-and-operator-aware — for
-`in`/`not_in` on a `static` enum it renders toggle-chips of the allowed
-values; for everything else in list-shape, or a `table_ref` enum with no
-real backing list, it falls back to free-text chips).
-
-### Amount — all 7 forms from the spec (resolved; full richness, not the minimal flat-$-or-% option)
-
-```
-{ form: 'flat', cents }
-{ form: 'rate', pct, baseAttributeId }              // baseAttributeId must be a number Attribute
-{ form: 'max' | 'min', a: AmountExpression, b: AmountExpression }   // recursive
-{ form: 'ladder', tracker, rateType: 'percent'|'flat', baseAttributeId, rows: [{ upTo: cents|null, value }] }
-{ form: 'capped_by', amount: AmountExpression, tracker }
-{ form: 'from_facts', attributeId }
-```
-Deliberate simplifications vs. the spec: percentages are plain numbers (15
-means 15%), not integer-hundredths-of-a-percent; `ladder`'s `baseAttributeId`
-is only required/used when `rateType: 'percent'` (a flat-tier ladder, like
-the real capped-fee rule, needs no base — it's just a dollar amount per
-tier). Money is integer **cents** internally either way (matching the
-spec's "money is always integer cents"); the UI (`dollarsToCents()`/
-`centsToDollars()` in `rules.js`) takes dollar-formatted input and converts.
-`payee` is just `'roa' | 'agent'` — the spec's richer Party/`economic_role`/
-`balance_role` machinery is not modeled.
-
-**Trackers are hardcoded names, not a real catalog** (`rules.js`:
-`TRACKER_OPTIONS` — `cap_accumulation`, `tech_fee_bucket`,
-`post_cap_bucket`, `production`, `deal_counts_graduation`,
-`deal_counts_personal`, matching the spec's six cards). `ladder`/
-`capped_by` just reference a tracker by name for the UI/data shape — there
-is no live tracker balance behind them. Building a real Tracker catalog
-(its own CRUD, versioning, live per-owner balances — the spec's genuinely
-separate "Progress" layer) was explicitly out of scope for "implement
-Rules with what we have till now"; revisit if/when Trackers become their
-own catalog, the same way Attributes did.
-
-Seed examples in `rules-data.json` (both pass `validateRule()`): `risk_fee`
-(flat $50, AND of three `neq` conditions — demonstrates the simple path)
-and `company_dollar_standard` (a `ladder` on `cap_accumulation`, `rateType:
-percent`, base `gci` — demonstrates the richer path and is the concrete
-answer to the plan-ladder-duplication tension discussed earlier: one Rule
-per plan variant, condition `plan == standard`, each with its own
-target/ladder — not one shared rule with a scope attachment).
-
-### Still not decided
-
-The rest of the real Rule field schema not covered above: `kind`
-(create/adjust/produce/mark), `applies`/`split` (how a rule fires and
-divides among people on a shared side), conflict groups/ranks (what
-happens when two Rules could both match the same transaction — nothing
-in this app resolves that yet, every matching Rule just independently
-fires). See Open items.
-
-## UI reference
-
-Condition builder is attribute-driven: selecting an Attribute determines
-the Test (operator) dropdown options and the Value input widget — not fixed
-per row. Reference screenshot showed: Attribute dropdown (labeled
-"Dimension" there — rename to "Attribute"), a Test/operator dropdown, and a
-value field with a per-attribute label (e.g. "Count"), plus Add/Cancel
-actions.
+- **Money is plain dollars** everywhere (real payload fields like
+  `commission_amount`, `overall_gci` are dollars). The flat amount field is
+  still *named* `cents` but holds dollars; `dollarsToCents`/`centsToDollars`
+  in `rules.js` are pass-throughs. Percentages are plain numbers (15 = 15%).
+- **Attributes and Rules are versioned**: an edit appends a new version (flat
+  list keyed by `id` + `version`; `currentAttributes()`/`currentRules()` take
+  the latest). Delete removes every version. Transactions and Agents are not
+  versioned.
+- **Resolver roots are peers**: `transaction.X`, `agent.X`, `team.X`,
+  `commission_split.X`. `agent` = the agent's own profile/enrollment facts;
+  `commission_split` = facts about one `commission_splits[]` entry on a
+  transaction (side, amount, side percentage, is_referral). Records are keyed
+  by the resolver **field name**, not the Attribute id.
+- **Enum values only, never free text** for enum Attributes. Static values
+  are plain strings (label == value); `table_ref` points at `teams`/`agents`
+  with fixed `id`/`name` fields. Resolver field suggestions stay deliberately
+  minimal — don't mine roa-backend or the spec for schemas.
+- **Rule scope collapses into conditions** — no `scope` field; plan/team/
+  agent narrowing is an ordinary condition.
+- **Rules**: nested AND/OR `conditions` gate, then ordered `branches`
+  (`{when, amount}`, first match wins, end with an empty-`when` catch-all),
+  7 amount forms (`flat`, `rate`, `max`, `min`, `ladder`, `capped_by`,
+  `from_facts`), `payee` role label, `applies`
+  (`per_transaction | per_side | per_agent_side | per_distinct_agent`),
+  `split` (`none | by_percent_attribute | divide_by_percent_attribute`),
+  `waivable`, `contributesToTracker`.
+- **Missing data is explicit `null`**, and in the engine **null fails every
+  operator except `is_empty`/`is_not_empty`** (including `neq`/`not_in`).
+  Fill data gaps with the enum's real "normal" value rather than changing
+  engine semantics.
+- **Trackers are hardcoded names** (`TRACKER_OPTIONS`), not a catalog. A
+  Trackers tab was built and reverted on purpose — don't rebuild it unasked.
+  `ladder` reads tracker progress from the agent field of the same name;
+  `capped_by` uses explicit `progressAttributeId` + `target`.
+- **Mock calculation** (`calculation.js`, `runMockCalculation`) stores
+  results on the transaction's `calculationResults`. Referral splits are not
+  excluded by the engine; rules exclude them via conditions. Split semantics
+  are subtle — see the skill's `references/engine.md` before changing them.
 
 ## Open items
 
-- Rule `kind` (create/adjust/produce/mark), `applies`/`split` (how a rule
-  fires and divides among people on a shared side), conflict groups/ranks
-  (what happens when two Rules both match one transaction — currently every
-  matching Rule just fires independently, no resolution) — not decided
-- A real Tracker catalog (currently `rules.js`'s `TRACKER_OPTIONS` is a
-  hardcoded name list with no live balances behind it) — not started
-- Actually evaluating a Rule set against a transaction (the calculation
-  pipeline itself) — not started; what exists is authoring/storage only
+- Real Tracker catalog with live balances, targets per plan, resets.
+- Conflict resolution between rules; rule `kind`; the spec's 12-stage
+  pipeline (e.g. `portion` is a static input, not marked by a rule).
+- Company Dollar models only Standard and Half Cap (LFRO, Domestic Team,
+  Marketing Collective deferred); WA workers' comp rate is a $0 placeholder.
+- No team data; unverified SkySlope fields (`deal_subtype`, `program`,
+  `decision`, `direction`, `sale_commission_percent` spelling).
+- `side_percentage` Attribute note is stale — data and engine treat it as
+  per side (sums to 100% within a side).
+- Attribute `contexts` (filter by transaction type) deferred.
